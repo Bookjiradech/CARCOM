@@ -1,0 +1,140 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <h1 class="text-3xl font-semibold mb-6">Users</h1>
+
+  <!-- Filter Form -->
+  <form method="get" class="mb-8 p-4 bg-white rounded-2xl border shadow-sm hover:shadow-md transition-shadow">
+    <!-- Keep everything on one line at md+ and prevent overlap by grouping Sort + Button -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+      <!-- ค้นหา (แคบลง) -->
+      <div class="md:col-span-4">
+        <label for="q" class="block text-sm font-medium text-gray-700 mb-1">ค้นหา</label>
+        <input
+          type="text" id="q" name="q" value="{{ q or '' }}" placeholder="ค้นหาชื่อผู้ใช้"
+          class="h-10 w-full rounded-lg border border-gray-300 pl-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600"
+        >
+      </div>
+
+      <!-- สถานะ -->
+      <div class="md:col-span-3">
+        <label for="status" class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
+        <select
+          id="status" name="status"
+          class="h-10 w-full rounded-lg border border-gray-300 pl-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600"
+        >
+          <option value="all" {{ status=='all' and 'selected' or '' }}>ทั้งหมด</option>
+          <option value="active" {{ status=='active' and 'selected' or '' }}>active</option>
+          <option value="inactive" {{ status=='inactive' and 'selected' or '' }}>inactive</option>
+        </select>
+      </div>
+
+      <!-- Admin -->
+      <div class="md:col-span-3">
+        <label for="admin" class="block text-sm font-medium text-gray-700 mb-1">Admin</label>
+        <select
+          id="admin" name="admin"
+          class="h-10 w-full rounded-lg border border-gray-300 pl-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600"
+        >
+          <option value="all" {{ admin=='all' and 'selected' or '' }}>ทั้งหมด</option>
+          <option value="yes" {{ admin=='yes' and 'selected' or '' }}>admin เท่านั้น</option>
+          <option value="no"  {{ admin=='no'  and 'selected' or '' }}>non-admin</option>
+        </select>
+      </div>
+
+      <!-- Sort + Button share the last 2 columns to avoid overlap -->
+      <div class="md:col-span-2">
+        <label for="sort" class="block text-sm font-medium text-gray-700 mb-1">เรียง</label>
+        <div class="flex items-end gap-2">
+          <select
+            id="sort" name="sort"
+            class="h-10 flex-1 min-w-0 rounded-lg border border-gray-300 pl-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="id_desc" {{ sort=='id_desc' and 'selected' or '' }}>ID มาก→น้อย</option>
+            <option value="id_asc"  {{ sort=='id_asc'  and 'selected' or '' }}>ID น้อย→มาก</option>
+            <option value="name_asc"  {{ sort=='name_asc'  and 'selected' or '' }}>ชื่อ A→Z</option>
+            <option value="name_desc" {{ sort=='name_desc' and 'selected' or '' }}>ชื่อ Z→A</option>
+          </select>
+          <button
+            type="submit"
+            class="btn btn-secondary h-10 px-4 inline-flex items-center justify-center rounded-lg font-medium bg-gray-900 text-white hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900"
+          >
+            กรอง
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Users Table -->
+  <div class="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+    <table class="min-w-full text-sm divide-y divide-gray-200" aria-describedby="users-caption">
+      <caption id="users-caption" class="sr-only">ตารางผู้ใช้พร้อมปุ่มสลับสถานะและสิทธิ์แอดมิน</caption>
+      <thead class="bg-gray-50 text-gray-700">
+        <tr>
+          <th scope="col" class="px-4 py-3 text-left font-medium whitespace-nowrap">ID</th>
+          <th scope="col" class="px-4 py-3 text-left font-medium whitespace-nowrap">Username</th>
+          <th scope="col" class="px-4 py-3 text-left font-medium whitespace-nowrap">Status</th>
+          <th scope="col" class="px-4 py-3 text-left font-medium whitespace-nowrap">Admin</th>
+          <th scope="col" class="px-4 py-3 text-left font-medium whitespace-nowrap">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        {% for u in rows %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium whitespace-nowrap">{{ "UR%03d"|format(u.id) }}</td>
+          <td class="px-4 py-3 font-medium">{{ u.username }}</td>
+
+          <!-- Status badge: active=green, inactive=red -->
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset
+              {% if u.status == 'active' %}
+                bg-green-50 text-green-800 ring-green-200
+              {% else %}
+                bg-red-50 text-red-800 ring-red-200
+              {% endif %}">
+              <span class="inline-block h-1.5 w-1.5 rounded-full
+                {% if u.status == 'active' %} bg-green-500 {% else %} bg-red-500 {% endif %}"></span>
+              {{ u.status }}
+            </span>
+          </td>
+
+          <!-- Admin badge -->
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset
+              {% if u.is_admin %} bg-blue-50 text-blue-800 ring-blue-200
+              {% else %} bg-gray-50 text-gray-800 ring-gray-200 {% endif %}">
+              {{ u.is_admin and 'Yes' or 'No' }}
+            </span>
+          </td>
+
+          <!-- Actions (equal-sized buttons) -->
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="flex flex-wrap gap-2">
+              <form method="post" action="{{ url_for('admin.users_toggle', uid=u.id, **request.args) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button
+                  type="submit"
+                  class="btn btn-primary h-9 px-3 inline-flex items-center justify-center rounded-lg font-medium text-xs bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600"
+                >
+                  Toggle Status
+                </button>
+              </form>
+              <form method="post" action="{{ url_for('admin.users_toggle_admin', uid=u.id, **request.args) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button
+                  type="submit"
+                  class="btn btn-secondary h-9 px-3 inline-flex items-center justify-center rounded-lg font-medium text-xs bg-gray-900 text-white hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900"
+                >
+                  Toggle Admin
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

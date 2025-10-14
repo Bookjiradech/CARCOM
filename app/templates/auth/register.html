@@ -1,0 +1,128 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="max-w-lg mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border p-8">
+    <h1 class="text-3xl font-semibold text-gray-900 mb-2">สมัครสมาชิก</h1>
+    <p class="text-sm text-gray-600 mb-8">สร้างบัญชีใหม่เพื่อเริ่มใช้งาน</p>
+
+    <form method="post" class="space-y-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อผู้ใช้งาน</label>
+          <input name="username" 
+                 class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                 required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน</label>
+            <input type="password" 
+                  name="password" 
+                 class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                 required>
+          <p class="text-xs text-gray-500 mt-1">ต้องมีอย่างน้อย 8 ตัวอักษร</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">ยืนยันรหัสผ่าน</label>
+          <input type="password" 
+                 name="confirm" 
+                 class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                 required>
+        </div>
+      </div>
+
+
+      <div class="border-t border-gray-200 pt-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">คำถามความปลอดภัย</h3>
+        <p class="text-sm text-gray-600 mb-6">ใช้สำหรับกู้คืนรหัสผ่านในกรณีที่ลืม</p>
+        
+        <div class="space-y-6">
+           คำถามที่ 1 
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">คำถามที่ 1</label>
+              <select name="question1" id="q1" 
+                      class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                      required>
+                <option value="">-- เลือกคำถาม --</option>
+                {% for q in questions %}
+                  <option value="{{ q }}">{{ q }}</option>
+                {% endfor %}
+                <option value="__custom__">อื่น ๆ (พิมพ์เอง)</option>
+              </select>
+              <input name="question1_custom" id="q1_custom" 
+                     class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors mt-3 hidden border pl-3" 
+                     placeholder="พิมพ์คำถามของคุณเอง">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">คำตอบที่ 1</label>
+              <input name="answer1" 
+                     class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                     required>
+            </div>
+          </div>
+
+           คำถามที่ 2 
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">คำถามที่ 2</label>
+              <select name="question2" id="q2" 
+                      class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                      required>
+                <option value="">-- เลือกคำถาม --</option>
+                {% for q in questions %}
+                  <option value="{{ q }}">{{ q }}</option>
+                {% endfor %}
+                <option value="__custom__">อื่น ๆ (พิมพ์เอง)</option>
+              </select>
+              <input name="question2_custom" id="q2_custom" 
+                     class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors mt-3 hidden border pl-3" 
+                     placeholder="พิมพ์คำถามของคุณเอง">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">คำตอบที่ 2</label>
+              <input name="answer2" 
+                     class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+                     required>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="space-y-4 pt-2">
+        <button class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2.5 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors">
+          สมัครสมาชิก
+        </button>
+        
+        <div class="text-center">
+          <a class="text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors" 
+             href="{{ url_for('auth.login') }}">
+            มีบัญชีแล้ว? เข้าสู่ระบบ
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function toggleCustom(selectId, inputId) {
+    const sel = document.getElementById(selectId);
+    const inp = document.getElementById(inputId);
+    if (!sel || !inp) return;
+    inp.classList.toggle('hidden', sel.value !== '__custom__');
+    // ถ้าเลือกกลับเป็นข้อสำเร็จรูป ให้ล้างค่าช่อง custom
+    if (sel.value !== '__custom__') { inp.value = ''; }
+  }
+  document.getElementById('q1')?.addEventListener('change', () => toggleCustom('q1','q1_custom'));
+  document.getElementById('q2')?.addEventListener('change', () => toggleCustom('q2','q2_custom'));
+</script>
+{% endblock %}

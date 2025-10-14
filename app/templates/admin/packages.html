@@ -1,0 +1,276 @@
+
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <h1 class="text-3xl font-semibold mb-6">Package Management</h1>
+
+  <!-- Add New Package Form (single line on md+) -->
+  <form method="post" action="{{ url_for('admin.packages_create') }}"
+    class="p-6 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-8">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">เพิ่มแพ็กเกจใหม่</h2>
+
+    <!-- ใช้ flex และไม่ให้ขึ้นบรรทัดใหม่บน md+ -->
+    <div class="flex flex-wrap md:flex-nowrap items-end gap-4">
+      <div class="w-28">
+        <label for="new-code" class="block text-sm font-medium text-gray-700 mb-1">Code</label>
+        <input name="code" id="new-code"
+          class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors"
+          placeholder="PKG0006" required>
+      </div>
+
+      <div class="min-w-40 md:w-56">
+        <label for="new-name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <input name="name" id="new-name"
+          class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors"
+          placeholder="Basic" required>
+      </div>
+
+      <div class="w-32">
+        <label for="new-price" class="block text-sm font-medium text-gray-700 mb-1">Price (THB)</label>
+        <input name="price_thb" id="new-price"
+          class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors"
+          value="0">
+      </div>
+
+      <div class="w-28">
+        <label for="new-credits" class="block text-sm font-medium text-gray-700 mb-1">Credits</label>
+        <input name="credits" id="new-credits"
+          class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors"
+          value="0">
+      </div>
+
+      <div class="w-36">
+        <label for="new-duration" class="block text-sm font-medium text-gray-700 mb-1">Duration (days)</label>
+        <input name="duration_days" id="new-duration"
+          class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors"
+          value="30">
+      </div>
+
+      <div class="min-w-40 md:w-56">
+        <label for="new-promotion" class="block text-sm font-medium text-gray-700 mb-1">Promotion</label>
+        <select name="promotion_id" id="new-promotion"
+          class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors">
+          <option value="">— none —</option>
+          {% for pm in promotions %}
+          <option value="{{ pm.id }}">{{ pm.code }} • {{ pm.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2 h-10 md:mt-6">
+        <input type="checkbox" name="is_lifetime" id="lifetime-new"
+          class="rounded border-gray-300 text-blue-600 focus:ring-blue-600">
+        <label for="lifetime-new" class="text-sm font-medium text-gray-700 whitespace-nowrap">Lifetime</label>
+      </div>
+
+      <div class="flex items-center gap-2 md:ml-auto">
+        <select name="status"
+          class="h-10 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm transition-colors">
+          <option value="active">active</option>
+          <option value="inactive">inactive</option>
+        </select>
+        <button type="submit"
+          class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-primary bg-green-600 text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600">
+          Add
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Filter Form -->
+  <form method="get"
+    class="flex flex-wrap gap-4 items-end mb-8 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+    <div>
+      <label for="lifetime-filter" class="block text-sm font-medium text-gray-700 mb-1">Lifetime</label>
+      <select name="lifetime" id="lifetime-filter"
+        class="h-10 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors">
+        <option value="all" {{ lifetime=='all' and 'selected' or '' }}>ทั้งหมด</option>
+        <option value="yes" {{ lifetime=='yes' and 'selected' or '' }}>เฉพาะ Lifetime</option>
+        <option value="no" {{ lifetime=='no' and 'selected' or '' }}>ไม่ใช่ Lifetime</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="sort-filter" class="block text-sm font-medium text-gray-700 mb-1">Sort</label>
+      <select name="sort" id="sort-filter"
+        class="h-10 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors">
+        <option value="id_desc" {{ sort=='id_desc' and 'selected' or '' }}>ID มาก→น้อย</option>
+        <option value="id_asc" {{ sort=='id_asc' and 'selected' or '' }}>ID น้อย→มาก</option>
+        <option value="price_desc" {{ sort=='price_desc' and 'selected' or '' }}>ราคา สูง→ต่ำ</option>
+        <option value="price_asc" {{ sort=='price_asc' and 'selected' or '' }}>ราคา ต่ำ→สูง</option>
+        <option value="credits_desc" {{ sort=='credits_desc' and 'selected' or '' }}>เครดิต มาก→น้อย</option>
+        <option value="credits_asc" {{ sort=='credits_asc' and 'selected' or '' }}>เครดิต น้อย→มาก</option>
+      </select>
+    </div>
+
+    <button type="submit"
+      class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-secondary bg-gray-800 text-white hover:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-800">กรอง</button>
+  </form>
+
+  <!-- Table View (card คุมเต็ม + จัดกึ่งกลางพอดี) -->
+<div class="mx-auto bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hidden md:block">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 text-gray-600">
+      <tr>
+        <th class="pl-6 pr-3 py-2 text-left font-medium w-20">ID</th>
+        <th class="px-3 py-2 text-left font-medium w-40">Code</th>
+        <th class="px-3 py-2 text-left font-medium w-44">Name</th>
+        <th class="px-3 py-2 text-left font-medium w-28">Price</th>
+        <th class="px-3 py-2 text-left font-medium w-24">Credits</th>
+        <th class="px-3 py-2 text-left font-medium w-28">Duration</th>
+        <th class="px-3 py-2 text-center font-medium w-24">Lifetime</th>
+        <th class="px-3 py-2 text-left font-medium w-64">Promotion</th>
+        <th class="px-3 py-2 text-left font-medium w-28">Status</th>
+        <th class="pl-3 pr-6 py-2 text-center font-medium w-28">Action</th>
+      </tr>
+    </thead>
+
+    <tbody class="divide-y divide-gray-200">
+      {% for p in packages %}
+      <tr class="hover:bg-gray-50/60">
+        <!-- ID -->
+        <td class="pl-6 pr-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+          {{ "PKG%03d"|format(p.id) }}
+        </td>
+
+        <!-- เริ่มฟอร์มตั้งแต่คอลัมน์ Code -->
+        <td class="px-3 py-2">
+          <form method="post" action="{{ url_for('admin.packages_update', pkg_id=p.id, **request.args) }}" class="contents">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input name="code" value="{{ p.code }}"
+              class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm" />
+        </td>
+
+        <td class="px-3 py-2">
+          <input name="name" value="{{ p.name }}"
+            class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm" />
+        </td>
+
+        <td class="px-3 py-2">
+          <input name="price_thb" value="{{ '{:,.2f}'.format(p.price_thb or 0) }}"
+            class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm text-right" />
+        </td>
+
+        <td class="px-3 py-2">
+          <input name="credits" value="{{ p.credits or 0 }}"
+            class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm text-right" />
+        </td>
+
+        <td class="px-3 py-2">
+          <input name="duration_days" value="{{ p.duration_days or '' }}"
+            class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm text-right"
+            placeholder="-" />
+        </td>
+
+        <td class="px-3 py-2">
+          <div class="flex justify-center">
+            <input type="checkbox" name="is_lifetime" {{ p.is_lifetime and 'checked' or '' }}
+              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+          </div>
+        </td>
+
+        <td class="px-3 py-2">
+          <select name="promotion_id"
+            class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm">
+            <option value="">— none —</option>
+            {% for pm in promotions %}
+              <option value="{{ pm.id }}" {{ p.promotion_id==pm.id and 'selected' or '' }}>
+                {{ pm.code }} • {{ pm.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </td>
+
+        <td class="px-3 py-2">
+          <select name="status"
+            class="h-9 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 px-2 text-sm">
+            <option value="active" {{ p.status=='active' and 'selected' or '' }}>active</option>
+            <option value="inactive" {{ p.status=='inactive' and 'selected' or '' }}>inactive</option>
+          </select>
+        </td>
+
+        <td class="pl-3 pr-6 py-2">
+          <div class="flex justify-center">
+            <button type="submit"
+              class="h-9 inline-flex items-center rounded-lg px-3 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 text-sm">
+              Save
+            </button>
+          </div>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+  <!-- Card View (for smaller screens) -->
+  <div class="space-y-4 md:hidden" aria-hidden="false">
+    {% for p in packages %}
+    <form method="post" action="{{ url_for('admin.packages_update', pkg_id=p.id, **request.args) }}" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="space-y-4">
+        <div class="flex flex-col">
+          <label class="text-sm font-medium text-gray-600">ID</label>
+          <div class="text-base font-medium text-gray-800">{{ "PKG%03d"|format(p.id) }}</div>
+        </div>
+
+        <div class="flex flex-col">
+          <label for="code-{{ p.id }}" class="text-sm font-medium text-gray-600">Code</label>
+          <input name="code" id="code-{{ p.id }}" value="{{ p.code }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm">
+        </div>
+
+        <div class="flex flex-col">
+          <label for="name-{{ p.id }}" class="text-sm font-medium text-gray-600">Name</label>
+          <input name="name" id="name-{{ p.id }}" value="{{ p.name }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm">
+        </div>
+
+        <div class="flex flex-col">
+          <label for="price-{{ p.id }}" class="text-sm font-medium text-gray-600">Price (THB)</label>
+          <input name="price_thb" id="price-{{ p.id }}" value="{{ '{:,.2f}'.format(p.price_thb or 0) }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm">
+        </div>
+
+        <div class="flex flex-col">
+          <label for="credits-{{ p.id }}" class="text-sm font-medium text-gray-600">Credits</label>
+          <input name="credits" id="credits-{{ p.id }}" value="{{ p.credits or 0 }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm">
+        </div>
+
+        <div class="flex flex-col">
+          <label for="duration-{{ p.id }}" class="text-sm font-medium text-gray-600">Duration (days)</label>
+          <input name="duration_days" id="duration-{{ p.id }}" value="{{ p.duration_days or '' }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm" placeholder="-">
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="is_lifetime" id="lifetime-{{ p.id }}" {{ p.is_lifetime and 'checked' or '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-600">
+          <label for="lifetime-{{ p.id }}" class="text-sm font-medium text-gray-700">Lifetime</label>
+        </div>
+
+        <div class="flex flex-col">
+          <label for="promotion-{{ p.id }}" class="text-sm font-medium text-gray-600">Promotion</label>
+          <select name="promotion_id" id="promotion-{{ p.id }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm">
+            <option value="">— none —</option>
+            {% for pm in promotions %}
+              <option value="{{ pm.id }}" {{ p.promotion_id==pm.id and 'selected' or '' }}>{{ pm.code }} • {{ pm.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="flex flex-col">
+          <label for="status-{{ p.id }}" class="text-sm font-medium text-gray-600">Status</label>
+          <select name="status" id="status-{{ p.id }}" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 text-sm">
+            <option value="active" {{ p.status=='active' and 'selected' or '' }}>active</option>
+            <option value="inactive" {{ p.status=='inactive' and 'selected' or '' }}>inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-6">
+        <button type="submit"
+          class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-primary bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 w-full justify-center">Save</button>
+      </div>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

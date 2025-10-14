@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "**/templates/**/*.html": "jinja-html"
+  },
+  "prettier.disableLanguages": ["jinja-html"],
+  "[jinja-html]": {
+    "editor.defaultFormatter": "none"
+  },
+  "html.validate.scripts": false,
+  "html.validate.styles": false
+}

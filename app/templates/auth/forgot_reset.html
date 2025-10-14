@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="max-w-md mx-auto">
+  <div class="bg-white rounded-2xl shadow-sm border p-8">
+    <h1 class="text-3xl font-semibold text-gray-900 mb-2">ตั้งรหัสผ่านใหม่</h1>
+    <p class="text-sm text-gray-600 mb-8">กรอกรหัสผ่านใหม่ที่คุณต้องการใช้</p>
+
+    <form method="post" class="space-y-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่านใหม่</label>
+        <input type="password" 
+               name="password" 
+               class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+               required>
+        <p class="text-xs text-gray-500 mt-1">ต้องมีอย่างน้อย 8 ตัวอักษร</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">ยืนยันรหัสผ่านใหม่</label>
+        <input type="password" 
+               name="confirm" 
+               class="h-10 w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors border pl-3" 
+               required>
+      </div>
+      
+      <button class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2.5 font-medium bg-green-600 text-white hover:bg-green-700 focus-visible:ring-2 focus-visible:ring-green-600 transition-colors">
+        บันทึก
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

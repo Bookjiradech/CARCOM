@@ -1,0 +1,161 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+    <p class="text-gray-600 mt-2">ภาพรวมระบบและการจัดการ</p>
+  </div>
+
+   Modern stats cards with better visual hierarchy 
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Users</p>
+          <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Packages</p>
+          <p class="text-2xl font-semibold text-gray-900">{{ stats.total_packages }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border p-6">
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="ml-4">
+          <p class="text-sm font-medium text-gray-600">Promotions</p>
+          <p class="text-2xl font-semibold text-gray-900">{{ stats.total_promos }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+   Enhanced activity sections with modern card design 
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="bg-white rounded-lg shadow-sm border">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-lg font-medium text-gray-900">รออนุมัติ</h3>
+            <p class="text-sm text-gray-500">{{ pending|length }} รายการ</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4">
+        {% if pending %}
+          <div class="space-y-3">
+            {% for p in pending %}
+              <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div class="flex-1 min-w-0">
+                  <a href="{{ url_for('admin.payments') }}" 
+                     class="text-sm font-medium text-orange-900 hover:text-orange-700 transition-colors">
+                    #{{ p.id }} • {{ p.user and p.user.username or '—' }}
+                  </a>
+                  <p class="text-xs text-orange-700 mt-1">
+                    {{ p.package and p.package.name or '—' }} • {{ "{:,.2f}".format(p.total or 0) }} ฿
+                  </p>
+                </div>
+                <div class="flex-shrink-0">
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                    รอดำเนินการ
+                  </span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="text-gray-500">ไม่มีงานค้าง</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-lg font-medium text-gray-900">เพิ่งอนุมัติล่าสุด</h3>
+            <p class="text-sm text-gray-500">รายการที่ผ่านการอนุมัติแล้ว</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4">
+        {% if approved %}
+          <div class="space-y-3">
+            {% for p in approved %}
+              <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div class="flex-1 min-w-0">
+                  <a href="{{ url_for('admin.payments') }}" 
+                     class="text-sm font-medium text-green-900 hover:text-green-700 transition-colors">
+                    #{{ "PAY%05d"|format(p.id) }} • {{ p.user and p.user.username or '—' }}
+                  </a>
+                  <p class="text-xs text-green-700 mt-1">
+                    {{ p.package and p.package.name or '—' }} • {{ "{:,.2f}".format(p.total or 0) }} ฿
+                  </p>
+                </div>
+                <div class="flex-shrink-0">
+                  <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                    อนุมัติแล้ว
+                  </span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+            </svg>
+            <p class="text-gray-500">ยังไม่มีรายการที่อนุมัติ</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

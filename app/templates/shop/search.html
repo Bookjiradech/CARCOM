@@ -1,0 +1,276 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <div class="mb-8">
+    <h1 class="text-3xl font-semibold text-gray-900 mb-2">สืบค้นรถยนต์มือสอง</h1>
+    <p class="text-gray-600">ค้นหารถยนต์มือสองที่เหมาะกับคุณจากหลายแหล่งข้อมูล</p>
+
+    {# เครดิตคงเหลือ #}
+    {% set credits = available_credits|default(0) %}
+    <div class="mt-3">
+      <span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm text-emerald-800">
+        เครดิตคงเหลือ {{ credits }}
+      </span>
+    </div>
+  </div>
+
+  {# ===== Banner: แนะนำให้รับ Free Trial ก่อนเริ่มค้นหา ===== #}
+  {% set trial_used = trial_used|default(false) %}
+  {% set has_active_package = has_active_package|default(false) %}
+  {% if not trial_used and not has_active_package %}
+    <div class="mb-6">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div class="text-sm text-amber-900">
+          <div class="font-semibold">ยังไม่ได้รับสิทธิ์ทดลองใช้ฟรี</div>
+          <div>คุณต้อง <span class="font-medium">กดรับแพ็กเกจฟรี</span> ก่อน จึงจะเริ่มค้นหารถได้</div>
+        </div>
+        <a href="{{ url_for('shop.list_packages') }}"
+           class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 focus-visible:ring-2 ring-amber-600">
+          ไปหน้าแพ็กเกจ (รับฟรี)
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+  {# meta สำหรับสคริปต์ (อ่านผ่าน data-* เพื่อหลีกเลี่ยง Jinja ใน JS) #}
+  <div id="searchMeta"
+       class="hidden"
+       data-trial-used="{{ 1 if trial_used else 0 }}"
+       data-has-active="{{ 1 if has_active_package else 0 }}"
+       data-credits="{{ available_credits or 0 }}">
+  </div>
+
+  {# ===== Tips Toggle Button (Amber) ===== #}
+  <div class="mb-4">
+    <button
+      id="tipsToggle"
+      type="button"
+      class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold
+             bg-amber-500 text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+      aria-controls="tipsPanel"
+      aria-expanded="false">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M9 21h6v-1a3 3 0 0 0 3-3h-1a7 7 0 1 0-10 0H6a3 3 0 0 0 3 3v1Zm3-18a6 6 0 0 1 6 6c0 2.2-1.16 3.92-2.5 5.04-.61.52-1.06 1.19-1.25 1.96H9.75c-.19-.77-.64-1.44-1.25-1.96C7.16 12.92 6 11.2 6 9a6 6 0 0 1 6-6Z"/>
+      </svg>
+      Tips
+      <svg id="tipsChevron" class="h-4 w-4 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+      </svg>
+    </button>
+
+    <div id="tipsPanel"
+         class="hidden mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <ul class="list-disc ms-5 space-y-1">
+        <li><span class="font-medium text-gray-900">กรอกแค่ “งบสูงสุด” ก็เริ่มค้นหาได้</span> ช่องอื่น ๆ ไม่บังคับ</li>
+        <li>ถ้าไม่แน่ใจ ให้ใส่คำค้นกว้าง ๆ เช่น “City”, “Yaris” หรือเว้นว่าง</li>
+        <li>ถ้าผลลัพธ์น้อย เราจะลองค้นหาแบบผ่อนคลายเงื่อนไขให้อัตโนมัติ</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+    <form id="searchForm" method="post" action="{{ url_for('shop.search_loading') }}" class="space-y-8">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <h2 class="text-2xl font-semibold text-gray-900 mb-1">รายละเอียดการค้นหา</h2>
+        <p class="text-sm text-gray-600">กรอกเฉพาะ <span class="font-medium text-gray-900">งบสูงสุด</span> ก็พอ — ช่องอื่นไม่บังคับ</p>
+
+        <div class="grid gap-6 md:grid-cols-2 mt-4">
+          <div class="space-y-2 md:col-span-2">
+            <label for="q" class="text-sm font-medium text-gray-700">คำค้นหา (ยี่ห้อ/รุ่น/ชื่อประกาศ) <span class="text-sm text-gray-600">(ไม่บังคับ)</span></label>
+            <input id="q" name="q"
+              class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3"
+              placeholder="เช่น City, Honda, 1.5 S" autocomplete="off" aria-describedby="q-help">
+            <p id="q-help" class="text-xs text-gray-500">ใช้เพื่อกรองในระบบของเรา (ตัวสแครปจะพยายามพิมพ์ค้นหาในเว็บต้นทางด้วย)</p>
+          </div>
+
+          <div class="space-y-2">
+            <label for="total_limit" class="text-sm font-medium text-gray-700">จำนวนรถที่ต้องการดึงรวม</label>
+            <select id="total_limit" name="total_limit"
+              class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3"
+              aria-describedby="limit-help">
+              <option value="20" selected>20 คัน (เฉลี่ยแหล่งละ ~5)</option>
+              <option value="30">30 คัน (เฉลี่ยแหล่งละ ~8)</option>
+              <option value="40">40 คัน (เฉลี่ยแหล่งละ ~10)</option>
+              <option value="50">50 คัน (เฉลี่ยแหล่งละ ~13)</option>
+            </select>
+            <div id="limit-help" class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              ยิ่งเลือกจำนวนมาก ระบบจะใช้เวลานานขึ้น เพราะต้องดึงข้อมูลจากหลายเว็บไซต์มากขึ้น
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label for="max_budget" class="text-sm font-medium text-gray-700">งบสูงสุด <span class="text-red-600">*</span></label>
+            <input id="max_budget" name="max_budget" required inputmode="numeric" pattern="[\d,]*"
+              class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3"
+              placeholder="เช่น 500,000" aria-describedby="budget-help" aria-required="true" autocomplete="off">
+            <p id="budget-help" class="text-xs text-gray-500">กรอกวงเงินที่ “ไม่เกิน” — รองรับรูปแบบมีคอมมา เช่น 700,000</p>
+          </div>
+        </div>
+      </div>
+
+      {# ===== ฟิลเตอร์ขั้นสูง (เก็บไว้ใน details) ===== #}
+      <details class="border-t pt-6 group">
+        <summary class="flex items-center cursor-pointer select-none">
+          <span class="text-xl font-semibold text-gray-900">ฟิลเตอร์ขั้นสูง</span>
+          <span class="ms-2 text-sm text-gray-500">(ไม่บังคับ แต่จะทำให้การค้นหาด้วย Ai แม่นยำยิ่งขึ้น)</span>
+          <svg class="ms-2 h-5 w-5 text-gray-500 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.173l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/>
+          </svg>
+        </summary>
+
+        <fieldset class="pt-4">
+          <legend class="sr-only">ข้อมูลรถยนต์</legend>
+          <div class="mt-2 grid gap-6 md:grid-cols-2">
+            <div class="space-y-2">
+              <label for="car_type" class="text-sm font-medium text-gray-700">ประเภทรถ (Car type)</label>
+              <select id="car_type" name="car_type" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3">
+                <option value="">-- ทั้งหมด --</option>
+                <option>รถเก๋ง</option><option>SUV</option><option>Pickup</option><option>Hatchback</option>
+                <option>MPV</option><option>Van</option><option>Coupe</option><option>Wagon</option>
+              </select>
+            </div>
+
+            <div class="space-y-2">
+              <label for="fuel_type" class="text-sm font-medium text-gray-700">เชื้อเพลิง (Fuel type)</label>
+              <select id="fuel_type" name="fuel_type" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3">
+                <option value="">-- ทั้งหมด --</option>
+                <option>เบนซิน</option><option>ดีเซล</option><option>ไฮบริด</option><option>ไฟฟ้า</option>
+                <option>ปลั๊กอินไฮบริด</option><option>NGV</option><option>LPG</option>
+              </select>
+            </div>
+
+            <div class="space-y-2">
+              <label for="gear_type" class="text-sm font-medium text-gray-700">เกียร์ (Gear type)</label>
+              <select id="gear_type" name="gear_type" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3">
+                <option value="">-- ทั้งหมด --</option>
+                <option>เกียร์อัตโนมัติ</option><option>เกียร์ธรรมดา</option>
+              </select>
+            </div>
+
+            <div class="space-y-2">
+              <label for="color" class="text-sm font-medium text-gray-700">สี (Color)</label>
+              <input id="color" name="color" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น เทา, ขาว, ดำ" autocomplete="off">
+            </div>
+
+            <div class="space-y-2">
+              <label for="min_year" class="text-sm font-medium text-gray-700">ปี (ตั้งแต่)</label>
+              <input id="min_year" name="min_year" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น 2015" inputmode="numeric" pattern="\d{4}" aria-describedby="year-help">
+              <p id="year-help" class="text-xs text-gray-500">กรอกเป็น ค.ศ. 4 หลัก</p>
+            </div>
+
+            <div class="space-y-2">
+              <label for="max_year" class="text-sm font-medium text-gray-700">ปี (ถึง)</label>
+              <input id="max_year" name="max_year" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น 2022" inputmode="numeric" pattern="\d{4}" aria-describedby="year2-help">
+              <p id="year2-help" class="text-xs text-gray-500">เว้นว่างได้หากไม่จำกัด</p>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="border-t pt-6">
+          <legend class="sr-only">ความต้องการการใช้งาน</legend>
+          <div class="mt-2 space-y-6">
+            <div class="space-y-2">
+              <label for="purpose" class="text-sm font-medium text-gray-700">การใช้งานหลัก (Purpose of use)</label>
+              <input id="purpose" name="purpose" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น ใช้ในเมือง, เดินทางไกล, บรรทุกของ" autocomplete="off">
+            </div>
+
+            <div class="space-y-2">
+              <label for="other_prefs" class="text-sm font-medium text-gray-700">ความต้องการอื่น ๆ (Other preferences)</label>
+              <textarea id="other_prefs" name="other_prefs" rows="3" class="w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="ใส่รายละเอียดเพิ่มเติม"></textarea>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="border-t pt-6">
+          <legend class="text-xl font-semibold text-gray-900">ข้อมูลส่วนตัว</legend>
+          <div class="mt-4 grid gap-6 md:grid-cols-2">
+            <div class="space-y-2">
+              <label for="salary" class="text-sm font-medium text-gray-700">รายได้ต่อเดือน <span class="text-sm text-gray-600">(ไม่บังคับ)</span></label>
+              <input id="salary" name="salary" inputmode="numeric" pattern="[\d,]*" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น 40,000" autocomplete="off">
+            </div>
+
+            <div class="space-y-2">
+              <label for="gender" class="text-sm font-medium text-gray-700">เพศ</label>
+              <select id="gender" name="gender" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3">
+                <option value="">-- เลือก --</option>
+                <option>ชาย</option><option>หญิง</option><option>อื่นๆ</option>
+              </select>
+            </div>
+
+            <div class="space-y-2">
+              <label for="marital_status" class="text-sm font-medium text-gray-700">สถานภาพสมรส</label>
+              <select id="marital_status" name="marital_status" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3">
+                <option value="">-- เลือก --</option>
+                <option>โสด</option><option>สมรส</option><option>หย่า</option>
+              </select>
+            </div>
+
+            <div class="space-y-2">
+              <label for="occupation" class="text-sm font-medium text-gray-700">อาชีพ</label>
+              <input id="occupation" name="occupation" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น พนักงานบริษัท, ฟรีแลนซ์" autocomplete="organization-title">
+            </div>
+
+            <div class="space-y-2 md:col-span-2">
+              <label for="education_level" class="text-sm font-medium text-gray-700">ระดับการศึกษา</label>
+              <input id="education_level" name="education_level" class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3" placeholder="เช่น ป.ตรี" autocomplete="off">
+            </div>
+          </div>
+        </fieldset>
+      </details>
+
+      <div class="pt-2 flex justify-end">
+        <button id="btnStartSearch" type="submit"
+          class="inline-flex items-center rounded-lg px-6 py-3 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
+          เริ่มค้นหา
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ===== Helper Scripts ===== #}
+<script>
+  // Toggle Tips
+  (function () {
+    const btn = document.getElementById('tipsToggle');
+    const panel = document.getElementById('tipsPanel');
+    const chev = document.getElementById('tipsChevron');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', () => {
+      const isHidden = panel.classList.contains('hidden');
+      panel.classList.toggle('hidden', !isHidden);
+      btn.setAttribute('aria-expanded', String(isHidden));
+      if (chev) chev.classList.toggle('rotate-180', isHidden);
+    });
+  })();
+
+  // คอมมาอัตโนมัติในช่องงบ
+  (function() {
+    const el = document.getElementById('max_budget');
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const raw = el.value.replace(/[^\d]/g, '');
+      el.value = raw ? raw.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+    });
+  })();
+
+  // กันกดเริ่มค้นหา ถ้ายังไม่มี Free Trial/แพ็กเกจ/เครดิต
+  (function() {
+    const btn = document.getElementById('btnStartSearch');
+    const meta = document.getElementById('searchMeta');
+    if (!btn || !meta) return;
+
+    const trialUsed = meta.dataset.trialUsed === '1';
+    const hasActive = meta.dataset.hasActive === '1';
+    const credits = parseInt(meta.dataset.credits || '0', 10) || 0;
+
+    if (!trialUsed && !hasActive && credits <= 0) {
+      btn.disabled = true;
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+      btn.title = 'กรุณาไปรับแพ็กเกจฟรีก่อน';
+    }
+  })();
+</script>
+{% endblock %}

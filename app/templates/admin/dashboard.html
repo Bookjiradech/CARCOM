@@ -1,0 +1,183 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <div class="mb-8">
+    <h1 class="text-3xl font-semibold text-gray-900">Admin Dashboard</h1>
+  </div>
+
+  <!-- ===== Cards summary (เดิม) ===== -->
+  <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 mb-8">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <div class="text-sm text-gray-600">Users</div>
+      <div class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <div class="text-sm text-gray-600">Packages</div>
+      <div class="text-2xl font-semibold text-gray-900">{{ stats.total_packages }}</div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <div class="text-sm text-gray-600">Promotions</div>
+      <div class="text-2xl font-semibold text-gray-900">{{ stats.total_promos }}</div>
+    </div>
+  </div>
+
+  <!-- ===== รายได้ / Filters + Cards + Chart ===== -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow mb-8">
+    <div class="flex items-center justify-between gap-4 mb-4">
+      <h2 class="text-2xl font-semibold">รายได้</h2>
+      <form method="get" class="flex flex-wrap items-end gap-3">
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">ช่วง</label>
+          {% set rg = period or 'monthly' %}
+          <select name="range" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2">
+            <option value="monthly" {{ 'selected' if rg=='monthly' else '' }}>รายเดือน</option>
+            <option value="yearly" {{ 'selected' if rg=='yearly' else '' }}>รายปี</option>
+            <option value="all" {{ 'selected' if rg=='all' else '' }}>ทั้งหมด</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">ปี</label>
+          <select name="year" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2" {{ 'disabled' if rg=='all' }}>
+            {% for y in years %}
+              <option value="{{ y }}" {{ 'selected' if (year|int)==y else '' }}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">เดือน</label>
+          <select name="month" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2" {{ 'disabled' if rg!='monthly' }}>
+            {% for m in months %}
+              <option value="{{ m }}" {{ 'selected' if (month|int)==m else '' }}>{{ months_th[m-1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button class="h-10 inline-flex items-center rounded-lg px-4 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600">
+          กรอง
+        </button>
+      </form>
+    </div>
+
+    <!-- Summary revenue cards -->
+    <div class="grid gap-4 md:grid-cols-3 mb-6">
+      <div class="rounded-xl border p-4">
+        <div class="text-sm text-gray-600">ช่วงที่เลือก</div>
+        <div class="mt-1 text-2xl font-semibold">{{ "{:,.2f}".format(rev_period_total or 0) }} ฿</div>
+      </div>
+      <div class="rounded-xl border p-4">
+        <div class="text-sm text-gray-600">ปีนี้</div>
+        <div class="mt-1 text-2xl font-semibold">{{ "{:,.2f}".format(rev_this_year or 0) }} ฿</div>
+      </div>
+      <div class="rounded-xl border p-4">
+        <div class="text-sm text-gray-600">ทั้งหมด</div>
+        <div class="mt-1 text-2xl font-semibold">{{ "{:,.2f}".format(rev_all_time or 0) }} ฿</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div>
+      <canvas
+  id="revenueChart"
+  height="110"
+  data-labels='{{ chart_labels|tojson }}'
+  data-values='{{ chart_values|tojson }}'
+></canvas>
+    </div>
+  </div>
+
+  <!-- ===== Pending / Approved lists (เดิม) ===== -->
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <h2 class="text-2xl font-semibold mb-4">รายการที่รออนุมัติ ({{ pending|length }})</h2>
+      {% if pending %}
+      <ul class="divide-y divide-gray-200">
+        {% for p in pending %}
+        <li class="py-2">
+          <a class="block text-gray-800 hover:text-blue-600 focus-visible:ring-2 ring-blue-600 rounded-md -mx-2 px-2 py-1" href="{{ url_for('admin.payments') }}">
+            <div class="text-sm font-medium">#{{ p.id }} • {{ p.user and p.user.username or '—' }}</div>
+            <div class="text-sm text-gray-600">{{ p.package and p.package.name or '—' }} • {{ "{:,.2f}".format(p.total or 0) }} ฿</div>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="p-4 bg-gray-50 text-gray-600 text-sm rounded-lg border border-gray-200">
+        ไม่มีรายการที่ต้องอนุมัติ
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <h2 class="text-2xl font-semibold mb-4">รายการที่อนุมัติล่าสุด</h2>
+      {% if approved %}
+      <ul class="divide-y divide-gray-200">
+        {% for p in approved %}
+        <li class="py-2">
+          <a class="block text-gray-800 hover:text-blue-600 focus-visible:ring-2 ring-blue-600 rounded-md -mx-2 px-2 py-1" href="{{ url_for('admin.payments') }}">
+            <div class="text-sm font-medium">#{{"PAY%05d"|format(p.id) }} • {{ p.user and p.user.username or '—' }}</div>
+            <div class="text-sm text-gray-600">{{ p.package and p.package.name or '—' }} • {{ "{:,.2f}".format(p.total or 0) }} ฿</div>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="p-4 bg-gray-50 text-gray-600 text-sm rounded-lg border border-gray-200">
+        ไม่มีรายการที่อนุมัติล่าสุด
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js CDN (พอเหมาะสำหรับหน้าแอดมิน) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (function () {
+    const el = document.getElementById('revenueChart');
+    if (!el) return;
+
+    // อ่านค่าจาก data-* แล้ว parse เป็น JS array
+    const labels = JSON.parse(el.dataset.labels || '[]');
+    const values = JSON.parse(el.dataset.values || '[]');
+    const ctx = el.getContext('2d');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'รายได้ (฿)',
+          data: values,
+          fill: false,
+          tension: 0.25,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            ticks: { callback: (v) => v.toLocaleString() + ' ฿' },
+            beginAtZero: true
+          }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const v = context.parsed.y || 0;
+                return ' ' + v.toLocaleString() + ' ฿';
+              }
+            }
+          },
+          legend: { display: false }
+        }
+      }
+    });
+  })();
+</script>
+
+{% endblock %}
+  

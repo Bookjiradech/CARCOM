@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-8">
+   Modern page header with better typography 
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">สืบค้นรถยนต์มือสอง</h1>
+    <p class="text-gray-600 leading-relaxed">ค้นหารถที่เหมาะกับคุณจากแหล่งข้อมูลหลากหลาย</p>
+  </div>
+
+   Modern card container with improved form styling 
+  <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+    <form method="post" action="{{ url_for('shop.search_start') }}" class="grid md:grid-cols-3 gap-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+       Enhanced form field styling 
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">งบประมาณสูงสุด (บาท)</label>
+        <input name="budget_max" 
+               class="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
+               placeholder="เช่น 700,000">
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">ยี่ห้อ</label>
+        <input name="brand" 
+               class="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
+               placeholder="เช่น Toyota">
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700">ปีขั้นต่ำ</label>
+        <input name="min_year" 
+               class="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
+               placeholder="เช่น 2017">
+      </div>
+
+       Modern button with better styling and positioning 
+      <div class="md:col-span-3 pt-4">
+        <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-4 rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-lg hover:shadow-xl">
+          เริ่มค้นหา (ตัด 1 เครดิต)
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

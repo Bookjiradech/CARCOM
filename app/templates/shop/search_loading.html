@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center">
+  <div class="max-w-2xl mx-auto text-center px-6">
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+
+      <h1 class="text-3xl font-bold text-gray-900 mb-3">กำลังสืบค้นรถจากแหล่งภายนอก…</h1>
+      <p class="text-lg text-gray-600 mb-8 leading-relaxed">ระบบกำลังดึงข้อมูลจาก Kaidee / Carsome / one2car / roddonjai และกรองตามเงื่อนไขของคุณ</p>
+
+   
+      <div class="flex items-center justify-center my-12">
+        <div class="relative">
+          <div class="h-16 w-16 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin"></div>
+          <div class="absolute inset-0 h-16 w-16 rounded-full border-4 border-transparent border-r-blue-400 animate-spin animation-delay-150"></div>
+        </div>
+      </div>
+
+
+      <form id="autoForm" method="post" action="{{ url_for('shop.search_start') }}">
+        {# สร้าง hidden inputs จากค่าฟอร์มเดิมที่ส่งมาหน้า loading (ยกเว้น csrf_token) #}
+        {% for k, v in form.items() if k != 'csrf_token' %}
+          <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endfor %}
+
+        {# ใส่ CSRF token ใหม่สำหรับโพสต์ไป /search/start #}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <noscript>
+          <div class="mt-6">
+            <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              ดำเนินการต่อ
+            </button>
+          </div>
+        </noscript>
+      </form>
+
+
+      <div class="mt-8 space-y-4">
+        <p class="text-sm text-gray-500 leading-relaxed">
+          ถ้าใช้เวลานานผิดปกติ ลองรีเฟรชหน้าหรือย้อนกลับไปแก้ไขเงื่อนไขการค้นหา
+        </p>
+        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+          <p class="text-blue-800 font-medium">
+            กำลังดึงข้อมูลประมาณ {{ form.total_limit or 20 }} คัน
+            (เฉลี่ยแหล่งละ ~{{ ((form.total_limit|int if form.total_limit else 20) + 3) // 4 }})
+          </p>
+          <p class="text-blue-700 text-sm mt-2 leading-relaxed">
+            อาจใช้เวลาหลายนาทีขึ้นอยู่กับจำนวนที่เลือกและความเร็วของแต่ละเว็บไซต์
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // auto-submit ทันทีที่หน้าโหลด (เผื่อ DOM ยังไม่พร้อม รอสั้น ๆ)
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+      const f = document.getElementById('autoForm');
+      if (f) f.submit();
+    }, 200);
+  });
+</script>
+{% endblock %}

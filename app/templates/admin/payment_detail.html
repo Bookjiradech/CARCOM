@@ -1,0 +1,140 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+
+  <!-- Header with Back Button -->
+  <div class="flex items-center gap-4 mb-6">
+    <a href="{{ url_for('admin.payments') }}"
+      class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-ghost bg-gray-100 text-gray-800 hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-600">
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+      ย้อนกลับ
+    </a>
+    <h1 class="text-3xl font-semibold">Payment #{{ "PAY%05d"|format(p.id) }}</h1>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-8">
+
+    <!-- Payment Information Card -->
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <h2 class="text-2xl font-semibold mb-6">ข้อมูลการชำระเงิน</h2>
+      <dl class="space-y-4 text-base">
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">User:</dt>
+          <dd class="font-medium text-gray-900">{{ p.user and p.user.username or '-' }}</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Package:</dt>
+          <dd>{{ p.package and (p.package.name or p.package.code) or '-' }}</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Promotion:</dt>
+          <dd>{% if p.promotion %}{{ p.promotion.code }} - {{ p.promotion.name }}{% else %}-{% endif %}</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Amount:</dt>
+          <dd class="font-medium text-gray-900">{{ "{:,.2f}".format(p.amount or 0) }} ฿</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">VAT:</dt>
+          <dd class="text-gray-900">{{ "{:,.2f}".format(p.vat or 0) }} ฿</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-3 bg-gray-50 rounded-lg px-4 -mx-2">
+          <dt class="font-semibold text-sm text-gray-700 mb-1 sm:mb-0">Total:</dt>
+          <dd class="text-lg font-bold text-gray-900">{{ "{:,.2f}".format(p.total or 0) }} ฿</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Method:</dt>
+          <dd class="text-gray-900">{{ p.method }}</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Status:</dt>
+          <dd>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+              {% if p.status == 'approved' %}bg-green-100 text-green-800
+              {% elif p.status == 'pending' %}bg-yellow-100 text-yellow-800
+              {% elif p.status == 'rejected' %}bg-red-100 text-red-800
+              {% else %}bg-gray-100 text-gray-800{% endif %}">
+              {{ p.status }}
+            </span>
+          </dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Created:</dt>
+          <dd class="text-gray-600">{{ p.created_at }}</dd>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:justify-between py-2">
+          <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">Updated:</dt>
+          <dd class="text-gray-600">{{ p.updated_at }}</dd>
+        </div>
+      </dl>
+
+      <!-- Action Buttons -->
+      <div class="mt-8 flex flex-wrap gap-3">
+        {% if p.status != 'approved' %}
+        <form method="post" action="{{ url_for('admin.payment_approve', pid=p.id) }}">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>{% endif %}
+          <button type="submit"
+            class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-primary bg-green-600 text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            อนุมัติ
+          </button>
+        </form>
+        {% endif %}
+        {% if p.status != 'rejected' %}
+        <form method="post" action="{{ url_for('admin.payment_reject', pid=p.id) }}">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>{% endif %}
+          <button type="submit"
+            class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-danger bg-red-600 text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            ปฏิเสธ
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Payment Slip Card -->
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
+      <h2 class="text-2xl font-semibold mb-6">สลิปการโอน</h2>
+      {% if p.slip_url %}
+      <div class="mb-4">
+        <a class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-ghost bg-blue-50 text-blue-600 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+          href="{{ url_for('admin.payment_slip', pid=p.id) }}" target="_blank">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          </svg>
+          เปิดไฟล์ต้นฉบับ
+        </a>
+      </div>
+      {% set ext = (p.slip_url.rsplit('.', 1)[-1] if '.' in (p.slip_url or '') else '').lower() %}
+      {% if ext in ['jpg','jpeg','png','gif','webp'] %}
+      <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+        <img src="{{ url_for('admin.payment_slip', pid=p.id) }}" class="w-full h-auto" alt="Payment slip">
+      </div>
+      {% else %}
+      <div class="p-6 bg-gray-50 text-gray-600 text-sm rounded-lg border border-gray-200 text-center">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p>ไฟล์แนบ (กดลิงก์ด้านบนเพื่อเปิด)</p>
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="p-8 bg-gray-50 text-gray-500 text-center rounded-lg border border-gray-200">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="text-lg font-medium mb-1">ยังไม่มีสลิป</p>
+        <p class="text-sm">รอลูกค้าอัปโหลดหลักฐานการโอนเงิน</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

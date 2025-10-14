@@ -1,0 +1,233 @@
+
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+  <div class="mb-6">
+    <h1 class="text-2xl font-semibold text-gray-900 mb-2">คันที่เหมาะกับคุณที่สุด</h1>
+    <p class="text-gray-600">รถยนต์ที่แนะนำโดย AI ตามความต้องการของคุณ</p>
+  </div>
+
+  <div class="flex items-center gap-2 mb-6">
+    <a href="{{ url_for('shop.search_view', session_id=session.id) }}"
+       class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900 focus-visible:ring-2 ring-gray-600">
+      ย้อนกลับไปดูรายการทั้งหมด
+    </a>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-6">
+    <div class="md:col-span-3">
+      <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+        {% set ex = (car.extra or {}) %}
+        {% set sp = ex.get('สเปกย่อย') or {} %}
+        {% set brand = car.brand or ex.get('ยี่ห้อ') %}
+        {% set model = car.model or ex.get('รุ่น') or ex.get('ชื่อรุ่น') %}
+        {% set year  = car.year or ex.get('ปีรถ') or sp.get('ปีจดทะเบียน') %}
+        {% set price_val = car.price_thb %}
+        {% set price_txt = ex.get('ราคา') or ex.get('ราคา(บาท)') %}
+        {% set mileage = car.mileage_km or ex.get('เลขไมล์') or ex.get('เลขไมล์(กม.)') %}
+        {% set fuel = ex.get('เชื้อเพลิง') or sp.get('เชื้อเพลิง') %}
+        {% set gear = ex.get('เกียร์') or sp.get('เกียร์') %}
+        {% set location = car.province or ex.get('จังหวัด') or ex.get('ที่ตั้งรถ') or ex.get('area') or ex.get('state') or ex.get('location') %}
+        {% set seller = car.seller_name or ex.get('ผู้ขาย') or ex.get('seller') or ex.get('dealer_name') %}
+
+        <div class="md:flex">
+          <div class="md:w-1/2">
+            {% if car.image_url %}
+              {% set src = car.image_url %}
+              {% set is_rdj = 'media.roddonjai.com' in (src or '') %}
+              {% if is_rdj %}
+                <img src="{{ src }}" alt="{{ car.title or (brand ~ ' ' ~ (model or '')) }}" class="w-full h-64 object-cover">
+              {% else %}
+                <img src="/img-proxy?u={{ src|urlencode }}" alt="{{ car.title or (brand ~ ' ' ~ (model or '')) }}" class="w-full h-64 object-cover">
+              {% endif %}
+            {% else %}
+              <div class="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500">ไม่มีรูปภาพ</div>
+            {% endif %}
+          </div>
+          <div class="md:w-1/2 p-6">
+            <div class="flex items-start justify-between gap-2">
+              <div class="font-semibold text-lg leading-snug">
+                <a href="{{ car.source_url or '#' }}" target="_blank" rel="noopener" class="hover:underline">
+                  {{ car.title or (brand ~ ' ' ~ (model or '')) or 'ไม่พบชื่อรุ่น' }}
+                </a>
+              </div>
+              <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                {{ (car.source or car.source_site or '')|upper }}
+              </span>
+            </div>
+
+            <div class="mt-2 text-2xl text-green-700 font-bold">
+              {% if price_val is not none %}
+                {{ "{:,.0f}".format(price_val) }} ฿
+              {% elif price_txt %}
+                {{ price_txt }} ฿
+              {% else %}
+                —
+              {% endif %}
+            </div>
+
+            <div class="mt-4 text-sm text-gray-700 space-y-2">
+              <div class="truncate">
+                <b>ผู้ขาย:</b> {{ seller or '—' }}
+                <span class="text-gray-400 px-1">•</span>
+                <b>ที่ตั้ง:</b> {{ location or '—' }}
+              </div>
+              <div><b>ยี่ห้อ/รุ่น:</b> {{ brand or '—' }} {{ model or '' }}</div>
+              <div class="flex gap-6">
+                <div><b>ปี:</b> {{ year or '—' }}</div>
+                <div><b>เลขไมล์:</b>
+                  {% if mileage %}
+                    {% if mileage is number %}{{ "{:,}".format(mileage) }} กม.{% else %}{{ mileage }}{% endif %}
+                  {% else %}—{% endif %}
+                </div>
+              </div>
+              <div class="flex gap-6">
+                <div><b>เชื้อเพลิง:</b> {{ fuel or '—' }}</div>
+                <div><b>เกียร์:</b> {{ gear or '—' }}</div>
+              </div>
+            </div>
+
+            <div class="mt-4 p-4 bg-green-50 rounded-xl border border-green-100">
+              <b class="text-green-800">เหตุผลที่แนะนำ:</b>
+              <div class="mt-2 text-green-700 whitespace-pre-line">{{ reason }}</div>
+            </div>
+
+            <div class="mt-6 flex items-center gap-3">
+              {% if next_exclude %}
+              <a id="next-candidate-link"
+                 href="{{ url_for('shop.best_car', session_id=session.id, exclude=next_exclude) }}"
+                 class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900 focus-visible:ring-2 ring-gray-600">
+                <svg class="w-4 h-4 mr-2 next-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13l-3 3m0 0l-3-3m3 3V8" />
+                </svg>
+                <span class="next-text">ค้นหาใหม่ (ดูคันถัดไป)</span>
+              </a>
+              {% endif %}
+              <a href="{{ car.source_url or '#' }}" target="_blank" rel="noopener"
+                 class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
+                ดูเพิ่มเติมบนเว็บไซต์
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if others and others|length > 0 %}
+    <div class="md:col-span-3 mt-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">ตัวเลือกอื่น ๆ</h2>
+      <div class="grid md:grid-cols-4 gap-4">
+        {% for c in others %}
+          {% set ex = c.extra or {} %}
+          {% set sp = ex.get('สเปกย่อย') or {} %}
+          {% set brand = c.brand or ex.get('ยี่ห้อ') %}
+          {% set model = c.model or ex.get('รุ่น') or ex.get('ชื่อรุ่น') %}
+          {% set year  = c.year or ex.get('ปีรถ') or sp.get('ปีจดทะเบียน') %}
+          {% set price_val = c.price_thb %}
+          {% set price_txt = ex.get('ราคา') or ex.get('ราคา(บาท)') %}
+          {% set mileage = c.mileage_km or ex.get('เลขไมล์') or ex.get('เลขไมล์(กม.)') %}
+          {% set seller2 = c.seller_name or ex.get('ผู้ขาย') or ex.get('dealer_name') %}
+          {% set loc2 = c.province or ex.get('จังหวัด') or ex.get('ที่ตั้งรถ') or ex.get('area') or ex.get('state') or ex.get('location') %}
+          <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+            <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener">
+              {% if c.image_url %}
+                {% set src2 = c.image_url %}
+                {% set is_rdj2 = 'media.roddonjai.com' in (src2 or '') %}
+                {% if is_rdj2 %}
+                  <img src="{{ src2 }}" class="w-full h-36 object-cover" alt="{{ c.title or (brand ~ ' ' ~ (model or '')) }}">
+                {% else %}
+                  <img src="/img-proxy?u={{ src2|urlencode }}" class="w-full h-36 object-cover" alt="{{ c.title or (brand ~ ' ' ~ (model or '')) }}">
+                {% endif %}
+              {% else %}
+                <div class="w-full h-36 bg-gray-200 flex items-center justify-center text-gray-500">ไม่มีรูปภาพ</div>
+              {% endif %}
+            </a>
+            <div class="p-3">
+              <div class="font-medium leading-tight line-clamp-2 min-h-[3rem]">
+                <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" class="hover:underline">
+                  {{ c.title or (brand ~ ' ' ~ (model or '')) or 'ไม่พบชื่อรุ่น' }}
+                </a>
+                <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 align-middle">
+                  {{ (c.source or c.source_site or '')|upper }}
+                </span>
+              </div>
+              <div class="mt-1 text-green-700 font-bold">
+                {% if price_val is not none %}
+                  {{ "{:,.0f}".format(price_val) }} ฿
+                {% elif price_txt %}
+                  {{ price_txt }} ฿
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+              <div class="text-xs text-gray-600 mt-1">
+                ปี: {{ year or '—' }} • ไมล์:
+                {% if mileage %}{% if mileage is number %}{{ "{:,}".format(mileage) }}{% else %}{{ mileage }}{% endif %}{% else %}—{% endif %}
+              </div>
+              <div class="text-xs text-gray-600 truncate mt-1">
+                {{ (seller2 or '—') ~ ' • ' ~ (loc2 or '—') }}
+              </div>
+              <div class="mt-2">
+                <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" class="text-blue-600 hover:underline text-sm">เปิดประกาศ</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ===== Overlay โหลดระหว่างเปลี่ยนไปคันถัดไป ===== #}
+<div id="loading-overlay" class="fixed inset-0 z-[60] hidden items-center justify-center bg-white/80 backdrop-blur-sm">
+  <div class="w-full max-w-sm mx-auto rounded-2xl border bg-white shadow-lg p-6 text-center">
+    <div class="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-gray-400/30 border-t-gray-700 animate-spin"></div>
+    <h3 class="text-lg font-semibold text-gray-900">กำลังค้นหาคันถัดไป…</h3>
+    <p class="mt-1 text-sm text-gray-600">ระบบจะอัปเดตคำแนะนำใหม่จากตัวเลือกที่เหลือ</p>
+    <p class="mt-3 text-xs text-gray-400" aria-live="polite">โปรดอย่าปิดหน้านี้</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const link = document.getElementById('next-candidate-link');
+    if (!link) return;
+
+    const overlay = document.getElementById('loading-overlay');
+    const icon = link.querySelector('.next-icon');
+    const text = link.querySelector('.next-text');
+
+    link.addEventListener('click', function (e) {
+      try {
+        e.preventDefault();
+
+        // แสดง overlay
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+
+        // ล็อกปุ่ม + สลับเป็นสถานะกำลังโหลด
+        link.classList.add('opacity-80', 'cursor-not-allowed');
+        link.setAttribute('aria-busy', 'true');
+
+        if (icon) {
+          icon.setAttribute('viewBox', '0 0 24 24');
+          icon.innerHTML = '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>';
+          icon.classList.add('animate-spin', 'mr-2');
+        }
+        if (text) text.textContent = 'กำลังค้นหาคันถัดไป…';
+
+        // หน่วงเล็กน้อยให้เบราว์เซอร์วาด overlay แล้วค่อยเปลี่ยนหน้า
+        const go = () => { window.location.href = link.href; };
+        if (window.requestAnimationFrame) {
+          requestAnimationFrame(() => setTimeout(go, 50));
+        } else {
+          setTimeout(go, 50);
+        }
+      } catch (err) {
+        window.location.href = link.href; // fallback
+      }
+    }, { passive: false });
+  })();
+</script>
+{% endblock %}
