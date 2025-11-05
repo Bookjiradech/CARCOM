@@ -24,18 +24,18 @@ def search_start():
 
     db = SessionLocal()
     try:
-        # ตัดเครดิต 1 ครั้ง
+        # consume 1 credit
         if not consume_one_credit(db, current_user.id):
             db.rollback()
-            flash("เครดิตไม่เพียงพอ กรุณาซื้อแพ็กเกจ", "error")
+            flash("Insufficient credits. Please purchase a package.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # สร้าง search session
+        # create search session
         ses = SearchSession(user_id=current_user.id, filters=filters, used_credits=1)
         db.add(ses)
-        db.flush()  # ได้ ses.id
+        db.flush()  # get ses.id
 
-        # เลือกรถ และบันทึกผลใน SearchSessionCar
+        # pick cars and save into SearchSessionCar
         cars = pick_cars(db, filters, limit=12)
         for idx, car in enumerate(cars, start=1):
             db.add(SearchSessionCar(session_id=ses.id, car_id=car.id, rank=idx))
@@ -52,10 +52,10 @@ def search_view(session_id: int):
     try:
         ses = db.get(SearchSession, session_id)
         if not ses or ses.user_id != current_user.id:
-            flash("ไม่พบการค้นหา", "error")
+            flash("Search session not found.", "error")
             return redirect(url_for("shop.search_form"))
 
-        # ดึงรายการรถของรอบล่าสุด (เราเก็บทับในตารางเดิมแล้ว)
+        # fetch cars of this session (we overwrite in the same table)
         q = (
             select(CarCache, SearchSessionCar.rank)
             .join(SearchSessionCar, SearchSessionCar.car_id == CarCache.id)
@@ -76,24 +76,24 @@ def search_again(session_id: int):
     try:
         ses = db.get(SearchSession, session_id)
         if not ses or ses.user_id != current_user.id:
-            flash("ไม่พบการค้นหา", "error")
+            flash("Search session not found.", "error")
             return redirect(url_for("shop.search_form"))
 
-        # ตัดเครดิตอีก 1 ครั้ง
+        # consume another credit
         if not consume_one_credit(db, current_user.id):
             db.rollback()
-            flash("เครดิตไม่พอสำหรับค้นหาใหม่ กรุณาซื้อแพ็กเกจ", "error")
+            flash("Not enough credits for a new search. Please purchase a package.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # ลบรายการรถเดิมของ session นี้
+        # remove old records of this session
         db.execute(delete(SearchSessionCar).where(SearchSessionCar.session_id == ses.id))
 
-        # เลือกรถชุดใหม่
+        # pick new cars
         cars = pick_cars(db, ses.filters or {}, limit=12)
         for idx, car in enumerate(cars, start=1):
             db.add(SearchSessionCar(session_id=ses.id, car_id=car.id, rank=idx))
 
-        # เพิ่มตัวนับเครดิตที่ใช้ใน session
+        # increase used_credits
         ses.used_credits += 1
         db.add(ses)
 

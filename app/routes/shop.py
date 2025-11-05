@@ -20,7 +20,7 @@ bp = Blueprint("shop", __name__, template_folder="../templates/shop")
 
 
 def _auto_expire_promotions(db):
-    """ปิดโปรฯ อัตโนมัติฝั่งผู้ใช้ด้วยกฎเดียวกัน"""
+    """Auto-close active promotions with end_date in the past (same rule as admin side)."""
     today = datetime.utcnow().date()
     rows = db.execute(select(Promotion).where(Promotion.status == "active")).scalars().all()
     changed = 0
@@ -63,7 +63,7 @@ def _available_credits(db, user_id: int) -> int:
     return int(db.execute(stmt).scalar() or 0)
 
 def _purge_cache_for_source(db, source: str) -> int:
-    # รองรับทั้งคอลัมน์ source และ source_site
+    # Support both columns source and source_site
     car_ids = db.execute(
         select(CarCache.id).where(or_(CarCache.source == source, CarCache.source_site == source))
     ).scalars().all()
@@ -126,14 +126,14 @@ def _run_scraper(source: str, q: str, min_price: int, max_price: int, limit: int
         return False, f"[{source}] exception: {e}"
 
 def _extract_year_from_text(x) -> Optional[int]:
-    """ดึงปี ค.ศ. 4 หลักจากสตริง เช่น 'ปี 2018 (จด 2019)' => 2018"""
+    """Extract a 4-digit year from text, e.g., 'year 2018 (registered 2019)' => 2018."""
     if x is None:
         return None
     m = re.search(r"(20\d{2}|19\d{2})", str(x))
     return int(m.group(1)) if m else None
 
 def _get_car_year(c: CarCache) -> Optional[int]:
-    """คืนค่า year จากคอลัมน์หลัก หรือจาก extra หลาย ๆ คีย์"""
+    """Return year from main column or from various keys in 'extra'."""
     if getattr(c, "year", None) is not None:
         try:
             return int(c.year)
@@ -141,7 +141,7 @@ def _get_car_year(c: CarCache) -> Optional[int]:
             pass
     ex = c.extra or {}
     sp = ex.get("สเปกย่อย") or {}
-    # ลองหลายคีย์ที่พบบ่อย
+    # Try common keys
     for k in ("ปีรถ", "ปี", "year", "ปีผลิต"):
         y = ex.get(k)
         yy = _extract_year_from_text(y)
@@ -167,7 +167,7 @@ def _match_extra_filters(
     def norm(x: str | None) -> str:
         return (x or "").strip().lower()
 
-    # --- ประเภทรถ ---
+    # --- body type ---
     if car_type:
         ct = norm(car_type)
         val = (
@@ -180,7 +180,7 @@ def _match_extra_filters(
         if ct and val and ct not in val:
             return False
 
-    # --- เชื้อเพลิง ---
+    # --- fuel ---
     if fuel_type:
         ft = norm(fuel_type)
         val = (
@@ -192,7 +192,7 @@ def _match_extra_filters(
         if ft and val and ft not in val:
             return False
 
-    # --- เกียร์ ---
+    # --- transmission ---
     if gear_type:
         gt = norm(gear_type)
         val = (
@@ -203,17 +203,17 @@ def _match_extra_filters(
         if gt and val and gt not in val:
             return False
 
-    # --- สี ---
+    # --- color ---
     if color:
         cc = norm(color)
         val = norm(extra.get("สี")) or norm((extra.get("สเปกย่อย") or {}).get("สี"))
         if cc and val and cc not in val:
             return False
 
-    # --- ปี (ช่วง) ---
+    # --- year range ---
     if min_year or max_year:
         y = _get_car_year(c)
-        # ถ้าผู้ใช้กำหนดช่วงปี แต่ประกาศไม่มีปี -> ตัดออก
+        # If user set a year range but the listing has no year -> exclude
         if y is None:
             return False
         if min_year and y < min_year:
@@ -225,7 +225,7 @@ def _match_extra_filters(
 
 # ---------- promo helpers ----------
 def _parse_date(s: Optional[str]) -> Optional[date]:
-    """พยายาม parse วันที่จากสตริงหลายรูปแบบ คืนค่าเป็น date (naive)"""
+    """Try to parse multiple date formats and return a naive date object."""
     if not s:
         return None
     s = s.strip()
@@ -255,7 +255,7 @@ def _is_promo_active(p: Promotion) -> bool:
     return start_ok and end_ok
 
 def _effective_price(pkg: Package) -> float:
-    """คำนวณราคาหลังโปรฯ ของแพ็กเกจ"""
+    """Compute effective price after promotion (if active)."""
     base = float(pkg.price_thb or 0)
     promo = getattr(pkg, "promotion", None)
     if promo and _is_promo_active(promo):
@@ -269,8 +269,8 @@ def _effective_price(pkg: Package) -> float:
 
 def _has_used_trial(db, user_id: int) -> bool:
     """
-    นับว่า Trial = แพ็กเกจที่ราคา base = 0 (ไม่พึ่งโปรฯ เพื่อกันกรณีโปร 100%)
-    ผู้ใช้ 1 คน ใช้ Trial ได้รวมกัน 1 ครั้ง (ไม่ว่าเป็นแพ็กเกจ trial อะไรก็ตาม)
+    Define Trial = any package with base price == 0 (not relying on promo 100%).
+    A user can use Trial only once in total (across all trial packages).
     """
     q = (
         select(UserPackage.id)
@@ -337,7 +337,7 @@ def search():
         available_credits=credits,
     )
 
-# วิธี B: หน้า loading
+# Method B: loading page
 @bp.post("/search/loading")
 @login_required
 def search_loading():
@@ -349,21 +349,21 @@ def search_loading():
 def search_start():
     q = (request.form.get("q") or "").strip()
 
-    # ---- จำนวนรวมที่ผู้ใช้ต้องการดึง (20/30/40/50) ----
+    # ---- total items user wants to fetch (20/30/40/50) ----
     total_limit_raw = (request.form.get("total_limit") or "").strip()
     total_limit = _to_int(total_limit_raw) or 20
     if total_limit not in (20, 30, 40, 50):
-        flash("จำนวนที่เลือกไม่ถูกต้อง (เลือกได้ 20, 30, 40, 50)", "error")
+        flash("Invalid selection (allowed: 20, 30, 40, 50).", "error")
         return redirect(url_for("shop.search"))
 
-    # ---- ใช้งบ "สูงสุด" ----
+    # ---- use budget 'max' ----
     max_budget_raw = (request.form.get("max_budget") or "").strip()
     max_budget = _to_int(max_budget_raw)
     if max_budget is None or max_budget <= 0:
-        flash("กรุณากรอกงบสูงสุด (เป็นตัวเลข)", "error")
+        flash("Please provide a valid max budget (number).", "error")
         return redirect(url_for("shop.search"))
 
-    # ฟิลด์เสริม
+    # extra fields
     salary = (request.form.get("salary") or "").strip()
     gender = (request.form.get("gender") or "").strip()
     marital_status = (request.form.get("marital_status") or "").strip()
@@ -375,15 +375,15 @@ def search_start():
     gear_type = (request.form.get("gear_type") or "").strip()
     color = (request.form.get("color") or "").strip()
 
-    # ✅ ปี (ช่วง)
+    # ✅ year range
     min_year = _to_int((request.form.get("min_year") or "").strip())
     max_year = _to_int((request.form.get("max_year") or "").strip())
     if min_year and (min_year < 1900 or min_year > 2100):
-        flash("ปี (ตั้งแต่) ไม่ถูกต้อง", "error"); return redirect(url_for("shop.search"))
+        flash("Invalid year (from).", "error"); return redirect(url_for("shop.search"))
     if max_year and (max_year < 1900 or max_year > 2100):
-        flash("ปี (ถึง) ไม่ถูกต้อง", "error"); return redirect(url_for("shop.search"))
+        flash("Invalid year (to).", "error"); return redirect(url_for("shop.search"))
     if min_year and max_year and max_year < min_year:
-        # สลับให้อัตโนมัติ เพื่อความสะดวก
+        # swap automatically for convenience
         min_year, max_year = max_year, min_year
 
     purpose = (request.form.get("purpose") or "").strip()
@@ -392,20 +392,20 @@ def search_start():
     db = SessionLocal()
     try:
         if _available_credits(db, current_user.id) <= 0:
-            flash("เครดิตไม่พอ กรุณาไปที่หน้าสั่งซื้อแพ็กเกจ", "error")
+            flash("Insufficient credits. Please purchase a package.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # รองรับ roddonjai เป็นค่า default ด้วย
+        # include roddonjai by default as well
         sources_cfg = current_app.config.get("SCRAPER_SOURCES", "kaidee,carsome,one2car,roddonjai")
         sources = [s.strip() for s in sources_cfg.split(",") if s.strip()]
         print("DEBUG SCRAPER_SOURCES =", sources, "Q =", q)
 
-        # เคลียร์ cache ราย source
+        # clear cache per source
         for s in sources:
             _purge_cache_for_source(db, s)
         db.commit()
 
-        # กระจายต่อแหล่งตามจำนวนที่ผู้ใช้เลือก
+        # spread target count across sources
         n_sources = max(1, len(sources))
         per_source_limit = (total_limit + n_sources - 1) // n_sources  # ceil
         cfg_cap = int(current_app.config.get("SCRAPER_LIMIT_PER_SOURCE",
@@ -424,12 +424,12 @@ def search_start():
                 any_ok = True
 
         if not any_ok:
-            flash("เกิดข้อผิดพลาดระหว่างดึงข้อมูลจากแหล่งภายนอก", "error")
+            flash("An error occurred while fetching data from external sources.", "error")
             if last_msg:
                 print(last_msg)
             return redirect(url_for("shop.search"))
 
-        # ---- กรองด้วยงบ "ไม่เกิน" ----
+        # ---- filter by budget 'max' ----
         conds = [CarCache.price_thb.isnot(None), CarCache.price_thb <= max_budget]
         if q:
             like = f"%{q}%"
@@ -441,7 +441,7 @@ def search_start():
             select(CarCache).where(and_(*conds)).order_by(CarCache.price_thb.asc()).limit(display_limit * 3)
         ).scalars().all()
 
-        # ✅ กรองช่วงปีร่วมกับฟิลเตอร์อื่น ๆ
+        # ✅ apply year range with other filters
         cars = [
             c for c in rows
             if _match_extra_filters(c, car_type, fuel_type, gear_type, color, min_year, max_year)
@@ -451,12 +451,12 @@ def search_start():
         print("DEBUG after_extra_filters=%d" % len(cars))
 
         if not cars:
-            flash("ไม่พบผลลัพธ์จากเงื่อนไขที่ระบุ", "info")
+            flash("No results found for the given filters.", "info")
             return redirect(url_for("shop.search"))
 
-        # หักเครดิตเมื่อมีผลลัพธ์แล้ว
+        # consume credit only after we have results
         if not consume_one_credit(db, current_user.id):
-            flash("เครดิตไม่พอ กรุณาไปที่หน้าสั่งซื้อแพ็กเกจ", "error")
+            flash("Insufficient credits. Please purchase a package.", "error")
             return redirect(url_for("shop.list_packages"))
 
         params = {
@@ -471,8 +471,8 @@ def search_start():
             "fuel_type": fuel_type,
             "gear_type": gear_type,
             "color": color,
-            "min_year": min_year,   # ✅ เก็บลง session
-            "max_year": max_year,   # ✅ เก็บลง session
+            "min_year": min_year,   # ✅ store into session
+            "max_year": max_year,   # ✅ store into session
             "purpose": purpose,
             "other_prefs": other_prefs,
             "sources": sources,
@@ -493,7 +493,7 @@ def search_start():
     except Exception as e:
         db.rollback()
         print("search_start error:", e)
-        flash("เกิดข้อผิดพลาดระหว่างดึงข้อมูลจากแหล่งภายนอก", "error")
+        flash("An error occurred while fetching data from external sources.", "error")
         return redirect(url_for("shop.search"))
     finally:
         db.close()
@@ -507,7 +507,7 @@ def search_view(session_id: int):
     try:
         ss = db.get(SearchSession, session_id)
         if not ss or ss.user_id != current_user.id:
-            flash("ไม่พบการค้นหานี้", "error")
+            flash("Search session not found.", "error")
             return redirect(url_for("shop.search"))
 
         rows = db.execute(
@@ -528,7 +528,7 @@ def best_car(session_id: int):
     try:
         ss = db.get(SearchSession, session_id)
         if not ss or ss.user_id != current_user.id:
-            flash("ไม่พบคำแนะนำที่เหมาะสม", "error")
+            flash("No suitable recommendation found.", "error")
             return redirect(url_for("shop.search"))
 
         rows = db.execute(
@@ -560,7 +560,7 @@ def best_car(session_id: int):
         )
 
         if not best:
-            flash("ไม่พบคำแนะนำที่เหมาะสม", "info")
+            flash("No suitable recommendation found.", "info")
             return redirect(url_for("shop.search_view", session_id=ss.id))
 
         others = [c for c in cars if c.id != best.id and c.id not in exclude_ids]
@@ -589,17 +589,17 @@ def list_packages():
         rows = db.execute(
             select(Package)
             .where(Package.status == "active")
-            .options(joinedload(Package.promotion))   # ✅ โหลดโปรฯ มาด้วย
+            .options(joinedload(Package.promotion))   # ✅ eager-load promotion
             .order_by(Package.id)
         ).scalars().all()
 
-        # ผู้ใช้รายนี้เคยใช้ Free Trial ไปแล้วหรือยัง (นับรวม trial ทุกตัว)
+        # has this user already used any Free Trial (count every trial)
         trial_used = _has_used_trial(db, current_user.id)
 
-        # ✅ คำนวณราคาจริง (ใช้งานร่วมกับตอน buy) แล้วแนบเป็นฟิลด์ให้ template
+        # ✅ compute effective price and attach helper fields for template
         for pkg in rows:
             base = float(pkg.price_thb or 0)
-            eff = _effective_price(pkg)                   # ใช้กฎโปรฯ + วันเริ่ม/สิ้นสุด
+            eff = _effective_price(pkg)                   # apply promo + date range rules
             promo_active = _is_promo_active(getattr(pkg, "promotion", None))
             setattr(pkg, "_base", base)
             setattr(pkg, "_eff", eff)
@@ -616,20 +616,20 @@ def activate_free(pkg_id: int):
     try:
         pkg = db.get(Package, pkg_id)
         if not pkg or pkg.status != "active":
-            flash("ไม่พบแพ็กเกจ", "error")
+            flash("Package not found.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # Free Trial = base price == 0 เท่านั้น (ไม่พึ่งโปรฯ)
+        # Free Trial = base price == 0 only (not via promo)
         if float(pkg.price_thb or 0) > 0:
-            flash("แพ็กเกจนี้ไม่ใช่แพ็กเกจฟรี", "error")
+            flash("This package is not a free package.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # กันใช้ trial ซ้ำ ข้ามแพ็กเกจ (รวมทุก trial)
+        # prevent using trial more than once across trials
         if _has_used_trial(db, current_user.id):
-            flash("คุณใช้สิทธิ์ทดลองไปแล้ว", "info")
+            flash("You have already used your trial.", "info")
             return redirect(url_for("shop.list_packages"))
 
-        # ไม่ต้องอนุมัติจากแอดมิน: ออกสิทธิ์ให้ทันที
+        # no admin approval: grant immediately
         now = datetime.utcnow()
         end_at = None if pkg.is_lifetime else now + timedelta(days=int(pkg.duration_days or 0))
 
@@ -642,7 +642,7 @@ def activate_free(pkg_id: int):
         )
         db.add(up)
         db.commit()
-        flash(f"เปิดใช้แพ็กเกจฟรีสำเร็จ! ได้รับ {pkg.credits} เครดิต", "success")
+        flash(f"Free package activated! You received {pkg.credits} credits.", "success")
         return redirect(url_for("auth.dashboard"))
     finally:
         db.close()
@@ -654,10 +654,10 @@ def buy_package(pkg_id: int):
     try:
         pkg = db.get(Package, pkg_id)
         if not pkg or pkg.status != "active":
-            flash("ไม่พบแพ็กเกจ", "error")
+            flash("Package not found.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # ใช้ "ราคาหลังโปรฯ" ในการคิดเงิน
+        # compute 'effective' price for billing
         base = float(pkg.price_thb or 0)
         eff = _effective_price(pkg)
         promo_id_to_set = pkg.promotion_id if eff < base else None
@@ -666,11 +666,11 @@ def buy_package(pkg_id: int):
         vat = round(amount * 0.07, 2)
         total = round(amount + vat, 2)
 
-        # ✅ เปลี่ยนสถานะเริ่มต้นเป็น draft (ยังไม่ส่งหาแอดมิน จนกว่าจะอัปโหลดสลิป)
+        # ✅ set initial status to draft (user will upload slip before sending to admin)
         pay = Payment(
             user_id=current_user.id,
             package_id=pkg.id,
-            promotion_id=promo_id_to_set,  # เก็บว่าได้ใช้โปรฯ อะไร
+            promotion_id=promo_id_to_set,  # record which promo was applied
             amount=amount, vat=vat, total=total,
             method="qr", status="draft"
         )
@@ -687,7 +687,7 @@ def payment_upload(payment_id: int):
     try:
         pay = db.get(Payment, payment_id)
         if not pay or pay.user_id != current_user.id:
-            flash("ไม่พบรายการชำระเงิน", "error")
+            flash("Payment not found.", "error")
             return redirect(url_for("shop.list_packages"))
         pkg = db.get(Package, pay.package_id)
         return render_template("shop/payment_upload.html", payment=pay, package=pkg)
@@ -699,18 +699,18 @@ def payment_upload(payment_id: int):
 def payment_upload_post(payment_id: int):
     file = request.files.get("slip")
     if not file or file.filename == "":
-        flash("กรุณาเลือกไฟล์สลิป", "error")
+        flash("Please select a slip file.", "error")
         return redirect(url_for("shop.payment_upload", payment_id=payment_id))
 
     if not allowed_file(file.filename):
-        flash("ชนิดไฟล์ไม่อนุญาต", "error")
+        flash("File type not allowed.", "error")
         return redirect(url_for("shop.payment_upload", payment_id=payment_id))
 
     db = SessionLocal()
     try:
         pay = db.get(Payment, payment_id)
         if not pay or pay.user_id != current_user.id:
-            flash("ไม่พบรายการชำระเงิน", "error")
+            flash("Payment not found.", "error")
             return redirect(url_for("shop.list_packages"))
 
         ext = file.filename.rsplit(".", 1)[-1].lower()
@@ -721,18 +721,18 @@ def payment_upload_post(payment_id: int):
         rel_path = os.path.relpath(dest, os.getcwd()).replace("\\", "/")
 
         pay.slip_url = rel_path
-        # ✅ เปลี่ยนจาก draft -> pending เมื่อมีสลิป (ส่งหาแอดมิน)
+        # ✅ change from draft -> pending when slip is uploaded (send to admin)
         pay.status = "pending"
         pay.verified_at = None
 
         db.add(pay)
         db.commit()
-        flash("อัปโหลดสลิปเรียบร้อย ส่งให้แอดมินตรวจแล้ว", "success")
+        flash("Slip uploaded. Sent to admin for review.", "success")
         return redirect(url_for("shop.payment_upload", payment_id=payment_id))
     finally:
         db.close()
 
-# ✅ ปุ่มยกเลิก (ยกเลิกได้เฉพาะตอนยัง draft)
+# ✅ cancel button (allowed only when status is draft)
 @bp.post("/payments/<int:payment_id>/cancel")
 @login_required
 def payment_cancel(payment_id: int):
@@ -740,19 +740,18 @@ def payment_cancel(payment_id: int):
     try:
         pay = db.get(Payment, payment_id)
         if not pay or pay.user_id != current_user.id:
-            flash("ไม่พบรายการชำระเงิน", "error")
+            flash("Payment not found.", "error")
             return redirect(url_for("shop.list_packages"))
 
         if pay.status != "draft":
-            flash("ยกเลิกไม่ได้ เนื่องจากรายการนี้ถูกส่งให้แอดมินหรือดำเนินการไปแล้ว", "error")
+            flash("Cannot cancel. This payment was already sent to admin or processed.", "error")
             return redirect(url_for("shop.payment_upload", payment_id=payment_id))
 
         pay.status = "cancelled"
         pay.updated_at = datetime.utcnow()
         db.add(pay)
         db.commit()
-        flash("ยกเลิกรายการชำระเงินแล้ว", "success")
+        flash("Payment request cancelled.", "success")
         return redirect(url_for("shop.list_packages"))
     finally:
         db.close()
-

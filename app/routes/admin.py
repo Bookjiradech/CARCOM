@@ -21,7 +21,7 @@ def _admin_required(view):
     @login_required
     def wrapped(*args, **kwargs):
         if not getattr(current_user, "is_admin", False):
-            flash("ต้องเป็นผู้ดูแลระบบเท่านั้น", "error")
+            flash("Admin only.", "error")
             return redirect(url_for("home"))
         return view(*args, **kwargs)
     wrapped.__name__ = view.__name__
@@ -29,7 +29,7 @@ def _admin_required(view):
 
 
 def _parse_date_val(v):
-    """พยายามแปลงเป็น date จากค่าที่มาจากฟอร์มหรือฐานข้อมูล"""
+    """Try to parse a value into a date from form or database."""
     if not v:
         return None
     if isinstance(v, date) and not isinstance(v, datetime):
@@ -47,7 +47,7 @@ def _parse_date_val(v):
     return None
 
 def _auto_expire_promotions(db):
-    """ถ้าวันนี้ > end_date และยังเป็น active ให้เปลี่ยนเป็น inactive อัตโนมัติ"""
+    """If today > end_date and status is still active, set to inactive automatically."""
     today = date.today()
     rows = db.execute(select(Promotion).where(Promotion.status == "active")).scalars().all()
     changed = 0
@@ -65,30 +65,30 @@ def _auto_expire_promotions(db):
 @_admin_required
 def dashboard():
     """
-    แดชบอร์ดเวอร์ชันใหม่:
-    - ฟิลเตอร์รายได้ด้วย query params: range=monthly|yearly|all, year=YYYY, month=1-12
-    - ส่ง summary: rev_period_total, rev_this_year, rev_all_time
-    - ส่งข้อมูลกราฟ: chart_labels, chart_values
-    - คงรายการ pending/approved เดิม
+    New dashboard:
+    - Revenue filters via query params: range=monthly|yearly|all, year=YYYY, month=1-12
+    - Provide summaries: rev_period_total, rev_this_year, rev_all_time
+    - Provide chart data: chart_labels, chart_values
+    - Keep pending/approved lists as before
     """
     db = SessionLocal()
     try:
-        # ---------- สถิติจำนวนรวม ----------
+        # ---------- aggregate stats ----------
         _auto_expire_promotions(db)
         total_users = db.execute(select(func.count(User.id))).scalar_one() or 0
         total_packages = db.execute(select(func.count(Package.id))).scalar_one() or 0
         total_promos = db.execute(select(func.count(Promotion.id))).scalar_one() or 0
 
-        # ---------- รับพารามิเตอร์ช่วงเวลา ----------
+        # ---------- time-range params ----------
         today = date.today()
         rg = (request.args.get("range") or "monthly").lower()  # monthly | yearly | all
         year = int(request.args.get("year") or today.year)
         month = int(request.args.get("month") or today.month)
 
-        # รายการชื่อเดือนภาษาไทยสั้น
-        months_th = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."]
+        # English short month names
+        months_th = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-        # ---------- สร้างช่วงปีที่มีข้อมูลจริง (หรือ fallback 3 ปีล่าสุด) ----------
+        # ---------- build available years from data (fallback to last 3 years) ----------
         y_bounds = db.execute(
             select(
                 func.min(extract("year", Payment.created_at)),
@@ -101,7 +101,7 @@ def dashboard():
             y_min, y_max = year - 2, year
         years = list(range(y_min, y_max + 1))
 
-        # ---------- สรุปรายได้พื้นฐาน ----------
+        # ---------- base revenue summaries ----------
         rev_all_time = db.execute(
             select(func.coalesce(func.sum(Payment.total), 0))
             .where(Payment.status == "approved")
@@ -115,13 +115,13 @@ def dashboard():
             )
         ).scalar() or 0.0
 
-        # ---------- เตรียมข้อมูลกราฟตามช่วง ----------
+        # ---------- chart data ----------
         chart_labels: list[str] = []
         chart_values: list[float] = []
         rev_period_total = 0.0
 
         if rg == "monthly":
-            # กราฟรายวันของเดือนที่เลือก
+            # daily chart for selected month
             last_day = monthrange(year, month)[1]
             rows = db.execute(
                 select(
@@ -143,7 +143,7 @@ def dashboard():
             rev_period_total = sum(chart_values)
 
         elif rg == "yearly":
-            # กราฟรายเดือนทั้งปีที่เลือก
+            # monthly chart for selected year
             rows = db.execute(
                 select(
                     extract("month", Payment.created_at),
@@ -163,7 +163,7 @@ def dashboard():
             rev_period_total = sum(chart_values)
 
         else:  # rg == "all"
-            # กราฟรายปีทั้งหมดที่มีข้อมูล
+            # yearly chart for all data
             rows = db.execute(
                 select(
                     extract("year", Payment.created_at),
@@ -180,7 +180,7 @@ def dashboard():
             chart_values = [sums_by_year.get(y, 0.0) for y in years_found]
             rev_period_total = sum(chart_values)
 
-        # ---------- ลิสต์รายการล่าสุด (เหมือนเดิม) ----------
+        # ---------- latest lists ----------
         pending = (
             db.execute(
                 select(Payment)
@@ -202,7 +202,7 @@ def dashboard():
 
         return render_template(
             "admin/dashboard.html",
-            # สถิติเดิม
+            # stats
             stats={
                 "total_users": total_users,
                 "total_packages": total_packages,
@@ -210,18 +210,18 @@ def dashboard():
             },
             pending=pending,
             approved=approved,
-            # ฟิลเตอร์และคงสถานะฟอร์ม (อย่าชื่อ range เด็ดขาด)
+            # filters (keep key 'range' intact)
             period=rg,
             year=year,
             month=month,
             years=years,
             months_th=months_th,
-            months=list(range(1, 13)),  # ใช้ใน template แทน range(1,13)
-            # สรุปรายได้
+            months=list(range(1, 13)),  # for template
+            # revenues
             rev_period_total=rev_period_total,
             rev_this_year=rev_this_year,
             rev_all_time=rev_all_time,
-            # ข้อมูลกราฟ
+            # chart
             chart_labels=chart_labels,
             chart_values=chart_values,
         )
@@ -283,7 +283,7 @@ def payment_detail(pid: int):
             .where(Payment.id == pid)
         ).scalar_one_or_none()
         if not p:
-            flash("ไม่พบรายการชำระเงิน", "error")
+            flash("Payment not found.", "error")
             return redirect(url_for("admin.payments"))
         return render_template("admin/payment_detail.html", p=p)
     finally:
@@ -292,14 +292,14 @@ def payment_detail(pid: int):
 
 def _grant_package_to_user(db, pay: Payment) -> None:
     """
-    แจกเครดิต/อายุแพ็กเกจให้ผู้ใช้ตาม payment ที่อนุมัติ
-    เรียกใช้เฉพาะตอนเปลี่ยนสถานะจากอย่างอื่น -> approved เท่านั้น
+    Grant credits/package duration to a user after a payment gets approved.
+    Call this only when status changes from non-approved -> approved.
     """
     pkg = db.get(Package, pay.package_id)
     if not pkg:
-        raise RuntimeError("ไม่พบแพ็กเกจสำหรับการชำระเงินนี้")
+        raise RuntimeError("Package for this payment was not found.")
 
-    # อายุใช้งาน
+    # duration
     end_at = None if pkg.is_lifetime else (datetime.utcnow() + timedelta(days=int(pkg.duration_days or 0)))
 
     up = UserPackage(
@@ -319,10 +319,10 @@ def payment_approve(pid: int):
     try:
         p = db.get(Payment, pid)
         if not p:
-            flash("ไม่พบรายการชำระเงิน", "error")
+            flash("Payment not found.", "error")
             return redirect(url_for("admin.payments", **request.args))
 
-        # ป้องกันเครดิตขึ้นซ้ำ: แจกเฉพาะตอนยังไม่ approved
+        # idempotency: grant only if not already approved
         if p.status != "approved":
             _grant_package_to_user(db, p)
             p.status = "approved"
@@ -331,14 +331,14 @@ def payment_approve(pid: int):
             p.updated_at = datetime.utcnow()
             db.add(p)
             db.commit()
-            flash("อนุมัติและเพิ่มเครดิตให้ผู้ใช้แล้ว", "success")
+            flash("Approved and credits granted to the user.", "success")
         else:
-            flash("รายการนี้อนุมัติไปแล้ว (ไม่เพิ่มซ้ำ)", "info")
+            flash("This payment is already approved (no duplicate grant).", "info")
 
         return redirect(url_for("admin.payment_detail", pid=p.id))
     except Exception as e:
         db.rollback()
-        flash(f"อนุมัติไม่สำเร็จ: {e}", "error")
+        flash(f"Approval failed: {e}", "error")
         return redirect(url_for("admin.payments", **request.args))
     finally:
         db.close()
@@ -351,13 +351,13 @@ def payment_reject(pid: int):
     try:
         p = db.get(Payment, pid)
         if not p:
-            flash("ไม่พบรายการชำระเงิน", "error")
+            flash("Payment not found.", "error")
             return redirect(url_for("admin.payments", **request.args))
         p.status = "rejected"
         p.updated_at = datetime.utcnow()
         db.add(p)
         db.commit()
-        flash("ปฏิเสธเรียบร้อย", "success")
+        flash("Rejected successfully.", "success")
         return redirect(url_for("admin.payment_detail", pid=p.id))
     finally:
         db.close()
@@ -370,7 +370,7 @@ def payment_slip(pid: int):
     try:
         p = db.get(Payment, pid)
         if not p or not p.slip_url:
-            flash("ไม่พบสลิป", "error")
+            flash("Slip not found.", "error")
             return redirect(url_for("admin.payment_detail", pid=pid))
 
         path = p.slip_url
@@ -378,7 +378,7 @@ def payment_slip(pid: int):
             path = os.path.normpath(os.path.join(os.getcwd(), path))
 
         if not os.path.exists(path):
-            flash("ไม่พบไฟล์สลิปบนดิสก์", "error")
+            flash("Slip file not found on disk.", "error")
             return redirect(url_for("admin.payment_detail", pid=pid))
 
         return send_file(path)
@@ -448,11 +448,11 @@ def packages_create():
         )
         db.add(pkg)
         db.commit()
-        flash("เพิ่มแพ็กเกจแล้ว", "success")
+        flash("Package created.", "success")
         return redirect(url_for("admin.packages"))
     except Exception as e:
         db.rollback()
-        flash(f"เพิ่มแพ็กเกจไม่สำเร็จ: {e}", "error")
+        flash(f"Failed to create package: {e}", "error")
         return redirect(url_for("admin.packages"))
     finally:
         db.close()
@@ -466,7 +466,7 @@ def packages_update(pkg_id: int):
     try:
         p = db.get(Package, pkg_id)
         if not p:
-            flash("ไม่พบแพ็กเกจ", "error")
+            flash("Package not found.", "error")
             return redirect(url_for("admin.packages"))
 
         p.code = f.get("code", p.code).strip()
@@ -486,11 +486,11 @@ def packages_update(pkg_id: int):
 
         db.add(p)
         db.commit()
-        flash("บันทึกแพ็กเกจแล้ว", "success")
+        flash("Package updated.", "success")
         return redirect(url_for("admin.packages", **request.args))
     except Exception as e:
         db.rollback()
-        flash(f"บันทึกไม่สำเร็จ: {e}", "error")
+        flash(f"Update failed: {e}", "error")
         return redirect(url_for("admin.packages", **request.args))
     finally:
         db.close()
@@ -546,11 +546,11 @@ def promotions_create():
         )
         db.add(promo)
         db.commit()
-        flash("เพิ่มโปรโมชันแล้ว", "success")
+        flash("Promotion created.", "success")
         return redirect(url_for("admin.promotions", **request.args))
     except Exception as e:
         db.rollback()
-        flash(f"เพิ่มโปรโมชันไม่สำเร็จ: {e}", "error")
+        flash(f"Failed to create promotion: {e}", "error")
         return redirect(url_for("admin.promotions", **request.args))
     finally:
         db.close()
@@ -564,7 +564,7 @@ def promotions_update(pid: int):
     try:
         p = db.get(Promotion, pid)
         if not p:
-            flash("ไม่พบโปรโมชัน", "error")
+            flash("Promotion not found.", "error")
             return redirect(url_for("admin.promotions"))
         p.code = f.get("code", p.code).strip()
         p.name = f.get("name", p.name).strip()
@@ -575,11 +575,11 @@ def promotions_update(pid: int):
         p.updated_at = datetime.utcnow()
         db.add(p)
         db.commit()
-        flash("บันทึกโปรโมชันแล้ว", "success")
+        flash("Promotion updated.", "success")
         return redirect(url_for("admin.promotions", **request.args))
     except Exception as e:
         db.rollback()
-        flash(f"บันทึกไม่สำเร็จ: {e}", "error")
+        flash(f"Update failed: {e}", "error")
         return redirect(url_for("admin.promotions", **request.args))
     finally:
         db.close()
@@ -627,13 +627,13 @@ def users_toggle(uid: int):
     try:
         u = db.get(User, uid)
         if not u:
-            flash("ไม่พบผู้ใช้", "error")
+            flash("User not found.", "error")
             return redirect(url_for("admin.users"))
         u.status = "inactive" if u.status == "active" else "active"
         u.updated_at = datetime.utcnow()
         db.add(u)
         db.commit()
-        flash("เปลี่ยนสถานะผู้ใช้แล้ว", "success")
+        flash("User status toggled.", "success")
         return redirect(url_for("admin.users", **request.args))
     finally:
         db.close()
@@ -646,14 +646,13 @@ def users_toggle_admin(uid: int):
     try:
         u = db.get(User, uid)
         if not u:
-            flash("ไม่พบผู้ใช้", "error")
+            flash("User not found.", "error")
             return redirect(url_for("admin.users"))
         u.is_admin = not u.is_admin
         u.updated_at = datetime.utcnow()
         db.add(u)
         db.commit()
-        flash("เปลี่ยนสถานะ admin แล้ว", "success")
+        flash("Admin status toggled.", "success")
         return redirect(url_for("admin.users", **request.args))
     finally:
         db.close()
-

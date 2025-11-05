@@ -52,14 +52,14 @@ def register_post():
             qid = int(val)
         except (TypeError, ValueError):
             return ""
-        # รองรับทั้ง 1-based และ 0-based
+        # Support both 1-based and 0-based indices
         if 1 <= qid <= len(qs_config):
             return qs_config[qid - 1]
         if 0 <= qid < len(qs_config):
             return qs_config[qid]
         return ""
 
-    # รับจากสองรูปแบบฟอร์ม
+    # Accept both form styles
     q1 = pick_text_from_id(request.form.get("security_q1"))
     q2 = pick_text_from_id(request.form.get("security_q2"))
     if not q1:
@@ -71,15 +71,15 @@ def register_post():
     a2 = request.form.get("security_a2") or request.form.get("answer2") or ""
 
     if not username or not password or not confirm or not q1 or not a1 or not q2 or not a2:
-        flash("กรุณากรอกข้อมูลให้ครบ", "error")
+        flash("Please fill in all required fields.", "error")
         return redirect(url_for("auth.register"))
 
     if len(password) < 8:
-        flash("รหัสผ่านควรยาวอย่างน้อย 8 ตัวอักษร", "error")
+        flash("Password should be at least 8 characters.", "error")
         return redirect(url_for("auth.register"))
 
     if password != confirm:
-        flash("รหัสผ่านยืนยันไม่ตรงกัน", "error")
+        flash("Password confirmation does not match.", "error")
         return redirect(url_for("auth.register"))
 
     db = SessionLocal()
@@ -98,11 +98,11 @@ def register_post():
         db.add_all(sas)
 
         db.commit()
-        flash("สมัครสมาชิกสำเร็จ", "success")
+        flash("Registration successful.", "success")
         return redirect(url_for("auth.login"))
     except Exception as e:
         db.rollback()
-        flash(f"สมัครไม่สำเร็จ: {e}", "error")
+        flash(f"Registration failed: {e}", "error")
         return redirect(url_for("auth.register"))
     finally:
         db.close()
@@ -118,25 +118,25 @@ def login():
 def login_post():
     username = (request.form.get("username") or "").strip()
     password = request.form.get("password", "")
-    admin_mode = (request.form.get("admin") == "1")  # ปุ่มผู้ดูแลส่ง admin=1
+    admin_mode = (request.form.get("admin") == "1")  # admin toggle sends admin=1
 
     db = SessionLocal()
     try:
         user = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
         if not user or not bcrypt.verify(password, user.password_hash):
-            flash("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "error")
+            flash("Invalid username or password.", "error")
             return redirect(url_for("auth.login"))
 
         if user.status != "active":
-            flash("บัญชีถูกระงับชั่วคราว", "error")
+            flash("Account is temporarily suspended.", "error")
             return redirect(url_for("auth.login"))
 
         if admin_mode and not getattr(user, "is_admin", False):
-            flash("บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลระบบ", "error")
+            flash("This account has no admin privileges.", "error")
             return redirect(url_for("auth.login"))
 
         login_user(user)
-        flash("เข้าสู่ระบบสำเร็จ", "success")
+        flash("Logged in successfully.", "success")
         return redirect(url_for("admin.dashboard" if admin_mode else "home"))
     finally:
         db.close()
@@ -146,7 +146,7 @@ def login_post():
 @login_required
 def logout():
     logout_user()
-    flash("ออกจากระบบแล้ว", "success")
+    flash("Logged out.", "success")
     return redirect(url_for("auth.login"))
 
 
@@ -163,7 +163,7 @@ def dashboard():
 def account():
     db = SessionLocal()
     try:
-        # เครดิตคงเหลือ
+        # total credits
         credits_stmt = (
             select(func.coalesce(func.sum(UserPackage.remaining_calls), 0))
             .where(
@@ -174,7 +174,7 @@ def account():
         )
         total_credits = int(db.execute(credits_stmt).scalar() or 0)
 
-        # วันคงเหลือ: ใช้ end_at ที่ไกลที่สุดในแพ็กเกจที่ยัง active
+        # remaining days: max end_at among active packages
         ups = db.execute(_active_userpackages_q(db, current_user.id)).scalars().all()
         max_end = None
         for up in ups:
@@ -189,7 +189,7 @@ def account():
             delta = end_naive - now
             remaining_days = max(0, delta.days)
 
-        # ประวัติการชำระเงินของผู้ใช้
+        # user's payment history
         payments = db.execute(
             select(Payment)
             .where(Payment.user_id == current_user.id)
@@ -206,7 +206,7 @@ def account():
         db.close()
 
 
-# ----- Reset password จากหน้า Account -----
+# ----- Reset password from Account page -----
 @bp.post("/account/reset_password")
 @login_required
 def account_reset_password():
@@ -215,29 +215,29 @@ def account_reset_password():
     confirm = request.form.get("confirm", "")
 
     if not new_password or len(new_password) < 8:
-        flash("รหัสผ่านใหม่ควรยาวอย่างน้อย 8 ตัวอักษร", "error")
+        flash("New password should be at least 8 characters.", "error")
         return redirect(url_for("auth.account"))
     if new_password != confirm:
-        flash("รหัสผ่านยืนยันไม่ตรงกัน", "error")
+        flash("Password confirmation does not match.", "error")
         return redirect(url_for("auth.account"))
 
     db = SessionLocal()
     try:
         user = db.get(User, current_user.id)
         if not user or not bcrypt.verify(old_password, user.password_hash):
-            flash("รหัสผ่านเดิมไม่ถูกต้อง", "error")
+            flash("Current password is incorrect.", "error")
             return redirect(url_for("auth.account"))
 
         user.password_hash = bcrypt.hash(new_password)
         db.add(user)
         db.commit()
-        flash("เปลี่ยนรหัสผ่านเรียบร้อยแล้ว", "success")
+        flash("Password changed successfully.", "success")
         return redirect(url_for("auth.account"))
     finally:
         db.close()
 
 
-# ----- Reset security questions จากหน้า Account -----
+# ----- Reset security Q&A from Account page -----
 @bp.post("/account/reset_security")
 @login_required
 def account_reset_security():
@@ -247,12 +247,12 @@ def account_reset_security():
     a2 = request.form.get("answer2", "")
 
     if not q1 or not a1 or not q2 or not a2:
-        flash("กรุณากรอกคำถามและคำตอบให้ครบ", "error")
+        flash("Please provide both questions and answers.", "error")
         return redirect(url_for("auth.account"))
 
     db = SessionLocal()
     try:
-        # ลบของเก่า (เอาแค่ 2 แถวไว้เสมอ)
+        # remove old entries (keep exactly 2 rows)
         olds = db.execute(
             select(SecurityAnswer).where(SecurityAnswer.user_id == current_user.id)
         ).scalars().all()
@@ -273,7 +273,7 @@ def account_reset_security():
         )
         db.add_all([sa1, sa2])
         db.commit()
-        flash("อัปเดตคำถามความปลอดภัยเรียบร้อยแล้ว", "success")
+        flash("Security questions updated.", "success")
         return redirect(url_for("auth.account"))
     finally:
         db.close()
@@ -308,10 +308,10 @@ def forgot_post():
                 session["fp_qids"] = [r.id for r in qrows]
                 return redirect(url_for("auth.forgot_verify"))
             else:
-                flash("บัญชีนี้ยังไม่ได้ตั้งคำถามความปลอดภัยหรือข้อมูลไม่สมบูรณ์ กรุณาเข้าสู่ระบบและตั้งค่าในหน้า Account > Security ก่อน", "error")
+                flash("This account has not set valid security questions. Please log in and set them in Account > Security.", "error")
                 return redirect(url_for("auth.forgot"))
 
-        flash("ถ้าชื่อผู้ใช้งานถูกต้อง ระบบจะพาไปขั้นตอนถัดไป", "info")
+        flash("If the username is correct, you'll be taken to the next step.", "info")
         return redirect(url_for("auth.forgot"))
     finally:
         db.close()
@@ -334,7 +334,7 @@ def forgot_verify():
             db.close()
 
     if not user_id or len(questions) < 2 or any(q == "" for q in questions):
-        flash("หมดอายุการยืนยัน หรือยังไม่ได้ตั้งคำถามความปลอดภัย", "error")
+        flash("Verification expired or security questions not available.", "error")
         return redirect(url_for("auth.forgot"))
 
     return render_template("auth/forgot_verify.html", questions=questions)
@@ -346,7 +346,7 @@ def forgot_verify_post():
     user_id = session.get("fp_user_id")
     qids = session.get("fp_qids", [])
     if not user_id or not qids:
-        flash("หมดอายุการยืนยัน กรุณาเริ่มใหม่", "error")
+        flash("Verification expired. Please start again.", "error")
         return redirect(url_for("auth.forgot"))
 
     a1 = request.form.get("answer1", "")
@@ -362,11 +362,11 @@ def forgot_verify_post():
                 ok = False
                 break
         if not ok:
-            flash("คำตอบไม่ถูกต้อง", "error")
+            flash("Incorrect answers.", "error")
             return redirect(url_for("auth.forgot_verify"))
 
         session["fp_verified"] = True
-        flash("ยืนยันสำเร็จ กรุณาตั้งรหัสผ่านใหม่", "success")
+        flash("Verified. Please set a new password.", "success")
         return redirect(url_for("auth.forgot_reset"))
     finally:
         db.close()
@@ -375,7 +375,7 @@ def forgot_verify_post():
 @bp.get("/forgot/reset")
 def forgot_reset():
     if not session.get("fp_verified"):
-        flash("กรุณายืนยันคำถามความปลอดภัยก่อน", "error")
+        flash("Please verify security questions first.", "error")
         return redirect(url_for("auth.forgot"))
     return render_template("auth/forgot_reset.html")
 
@@ -383,16 +383,16 @@ def forgot_reset():
 @bp.post("/forgot/reset")
 def forgot_reset_post():
     if not session.get("fp_verified"):
-        flash("หมดอายุการยืนยัน กรุณาเริ่มใหม่", "error")
+        flash("Verification expired. Please start again.", "error")
         return redirect(url_for("auth.forgot"))
 
     new_password = request.form.get("password", "")
     confirm = request.form.get("confirm", "")
     if not new_password or len(new_password) < 8:
-        flash("รหัสผ่านควรยาวอย่างน้อย 8 ตัวอักษร", "error")
+        flash("Password should be at least 8 characters.", "error")
         return redirect(url_for("auth.forgot_reset"))
     if new_password != confirm:
-        flash("รหัสผ่านยืนยันไม่ตรงกัน", "error")
+        flash("Password confirmation does not match.", "error")
         return redirect(url_for("auth.forgot_reset"))
 
     user_id = session.get("fp_user_id")
@@ -400,7 +400,7 @@ def forgot_reset_post():
     try:
         user = db.get(User, int(user_id)) if user_id else None
         if not user:
-            flash("ไม่พบบัญชีผู้ใช้", "error")
+            flash("User not found.", "error")
             return redirect(url_for("auth.forgot"))
 
         user.password_hash = bcrypt.hash(new_password)
@@ -411,7 +411,7 @@ def forgot_reset_post():
         session.pop("fp_qids", None)
         session.pop("fp_verified", None)
 
-        flash("ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว", "success")
+        flash("Password has been reset. Please log in.", "success")
         return redirect(url_for("auth.login"))
     finally:
         db.close()

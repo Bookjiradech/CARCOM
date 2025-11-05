@@ -30,7 +30,7 @@ def img_proxy():
             u,
             headers={
                 "User-Agent": UA,
-                # ใส่ referer ของแหล่งที่มา เพื่อผ่าน anti-hotlink
+                # Add referer of the original site to pass anti-hotlink checks
                 "Referer": "https://www.one2car.com/",
             },
             stream=True,
@@ -42,10 +42,10 @@ def img_proxy():
     if r.status_code != 200:
         abort(r.status_code)
 
-    # เดา Content-Type ถ้าไม่ได้ส่งมา
+    # Guess Content-Type if not provided
     ct = r.headers.get("Content-Type", "")
     if not ct or "image" not in ct:
-        # เดาจากนามสกุล
+        # Guess from extension
         if u.lower().endswith(".png") or ".png?" in u.lower():
             ct = "image/png"
         elif u.lower().endswith((".jpg", ".jpeg")) or ".jpg" in u.lower() or ".jpeg" in u.lower():
@@ -54,8 +54,8 @@ def img_proxy():
             ct = "image/webp"
 
     resp = Response(r.iter_content(64 * 1024), content_type=ct)
-    # cache 1 วัน
+    # cache 1 day
     resp.headers["Cache-Control"] = "public, max-age=86400, immutable"
-    # ป้องกันดาวน์โหลดเป็นไฟล์
+    # inline to prevent forced download
     resp.headers["Content-Disposition"] = 'inline; filename="img"'
     return resp
