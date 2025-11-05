@@ -1,12 +1,11 @@
-
 {% extends "layout.html" %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6">
   <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-semibold text-gray-900">ผลการค้นหา</h1>
+    <h1 class="text-2xl font-semibold text-gray-900">Search Results</h1>
     <div class="text-sm text-gray-600">
       {% if cars and cars|length > 0 %}
-        พบทั้งหมด <span class="font-semibold text-blue-600">{{ cars|length }}</span> คัน
+        Found <span class="font-semibold text-blue-600">{{ cars|length }}</span> cars
       {% endif %}
     </div>
   </div>
@@ -20,41 +19,41 @@
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            ย้อนกลับ
+            Back
           </button>
           <a href="{{ url_for('shop.search') }}" 
              class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900 focus-visible:ring-2 ring-gray-600">
-            ค้นหาใหม่
+            New search
           </a>
         </div>
 
         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          {# ---- ปุ่ม Best car: เพิ่ม loading ---- #}
+          {# ---- Best car button: with loading ---- #}
           <a id="best-car-link" href="{{ url_for('shop.best_car', session_id=session.id) }}"
              class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
             <svg class="w-4 h-4 mr-2 bestcar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span class="bestcar-text">ค้นหารถยนต์ที่ดีที่สุดสำหรับฉัน</span>
+            <span class="bestcar-text">Find the best car for me</span>
           </a>
 
           <form method="get" action="{{ url_for('shop.search_view', session_id=session.id) }}" class="flex items-center gap-2">
-            <label for="sort" class="text-sm font-medium text-gray-700 whitespace-nowrap">เรียงตาม:</label>
+            <label for="sort" class="text-sm font-medium text-gray-700 whitespace-nowrap">Sort by:</label>
             <select id="sort" name="sort" onchange="this.form.submit()"
                     class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 text-sm pl-3">
-              <option value="" {{ '' == (sort or '') and 'selected' or '' }}>ค่าเริ่มต้น</option>
-              <option value="price_asc" {{ (sort=='price_asc') and 'selected' or '' }}>ราคาต่ำ → สูง</option>
-              <option value="price_desc" {{ (sort=='price_desc') and 'selected' or '' }}>ราคาสูง → ต่ำ</option>
-              <option value="year_desc" {{ (sort=='year_desc') and 'selected' or '' }}>ปีใหม่ → ปีเก่า</option>
-              <option value="year_asc" {{ (sort=='year_asc') and 'selected' or '' }}>ปีเก่า → ปีใหม่</option>
-              <option value="mileage_asc" {{ (sort=='mileage_asc') and 'selected' or '' }}>ไมล์น้อย → มาก</option>
-              <option value="mileage_desc" {{ (sort=='mileage_desc') and 'selected' or '' }}>ไมล์มาก → น้อย</option>
-              <option value="brand_az" {{ (sort=='brand_az') and 'selected' or '' }}>ยี่ห้อ A → Z</option>
-              <option value="brand_za" {{ (sort=='brand_za') and 'selected' or '' }}>ยี่ห้อ Z → A</option>
-              <option value="source" {{ (sort=='source') and 'selected' or '' }}>แหล่งที่มา</option>
+              <option value="" {{ '' == (sort or '') and 'selected' or '' }}>Default</option>
+              <option value="price_asc" {{ (sort=='price_asc') and 'selected' or '' }}>Price: Low → High</option>
+              <option value="price_desc" {{ (sort=='price_desc') and 'selected' or '' }}>Price: High → Low</option>
+              <option value="year_desc" {{ (sort=='year_desc') and 'selected' or '' }}>Year: New → Old</option>
+              <option value="year_asc" {{ (sort=='year_asc') and 'selected' or '' }}>Year: Old → New</option>
+              <option value="mileage_asc" {{ (sort=='mileage_asc') and 'selected' or '' }}>Mileage: Low → High</option>
+              <option value="mileage_desc" {{ (sort=='mileage_desc') and 'selected' or '' }}>Mileage: High → Low</option>
+              <option value="brand_az" {{ (sort=='brand_az') and 'selected' or '' }}>Brand: A → Z</option>
+              <option value="brand_za" {{ (sort=='brand_za') and 'selected' or '' }}>Brand: Z → A</option>
+              <option value="source" {{ (sort=='source') and 'selected' or '' }}>Source</option>
             </select>
             <noscript>
-              <button class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900">จัดเรียง</button>
+              <button class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900">Sort</button>
             </noscript>
           </form>
         </div>
@@ -109,7 +108,7 @@
               <h3 class="font-semibold text-gray-900 leading-tight line-clamp-2">
                 <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" 
                    class="hover:text-blue-600 transition-colors">
-                  {{ c.title or (brand ~ ' ' ~ (model or '')) or 'ไม่พบชื่อรุ่น' }}
+                  {{ c.title or (brand ~ ' ' ~ (model or '')) or 'Model name not found' }}
                 </a>
               </h3>
               <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full whitespace-nowrap">
@@ -129,46 +128,46 @@
 
             <div class="space-y-2 text-sm text-gray-600">
               <div class="flex items-center justify-between">
-                <span class="font-medium">ผู้ขาย:</span>
+                <span class="font-medium">Seller:</span>
                 <span class="text-right">{{ seller or '—' }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="font-medium">ที่ตั้ง:</span>
+                <span class="font-medium">Location:</span>
                 <span class="text-right">{{ location or '—' }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="font-medium">ยี่ห้อ/รุ่น:</span>
+                <span class="font-medium">Brand/Model:</span>
                 <span class="text-right">{{ brand or '—' }} {{ model or '' }}{% if trim %} ({{ trim }}){% endif %}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="font-medium">ปี:</span>
+                <span class="font-medium">Year:</span>
                 <span class="text-right">{{ year or '—' }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="font-medium">เลขไมล์:</span>
+                <span class="font-medium">Mileage:</span>
                 <span class="text-right">
                   {% if mileage %}
-                    {% if mileage is number %}{{ "{:,}".format(mileage) }} กม.{% else %}{{ mileage }}{% endif %}
+                    {% if mileage is number %}{{ "{:,}".format(mileage) }} km{% else %}{{ mileage }}{% endif %}
                   {% else %}—{% endif %}
                 </span>
               </div>
               {% if car_type %}
               <div class="flex items-center justify-between">
-                <span class="font-medium">ประเภทรถ:</span>
+                <span class="font-medium">Body type:</span>
                 <span class="text-right">{{ car_type }}{% if car_type_sub %} ({{ car_type_sub }}){% endif %}</span>
               </div>
               {% endif %}
               <div class="flex items-center justify-between">
-                <span class="font-medium">เชื้อเพลิง:</span>
+                <span class="font-medium">Fuel:</span>
                 <span class="text-right">{{ fuel or '—' }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="font-medium">เกียร์:</span>
+                <span class="font-medium">Transmission:</span>
                 <span class="text-right">{{ gear or '—' }}</span>
               </div>
               {% if color %}
               <div class="flex items-center justify-between">
-                <span class="font-medium">สี:</span>
+                <span class="font-medium">Color:</span>
                 <span class="text-right">{{ color }}</span>
               </div>
               {% endif %}
@@ -177,7 +176,7 @@
             <div class="mt-4 pt-3 border-t">
               <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" 
                  class="inline-flex items-center justify-center w-full rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600 transition-colors">
-                เปิดประกาศ
+                Open listing
                 <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                 </svg>
@@ -194,19 +193,19 @@
         <svg class="w-12 h-12 text-yellow-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.824-2.562M15 6.306a7.962 7.962 0 00-6 0m6 0a7.962 7.962 0 011.824 2.562 7.962 7.962 0 010 4.274c-.181.621-.4 1.221-.674 1.798"></path>
         </svg>
-        <h3 class="text-lg font-medium text-yellow-800 mb-2">ไม่พบผลลัพธ์</h3>
-        <p class="text-yellow-700 mb-4">ลองปรับเปลี่ยนเงื่อนไขการค้นหาหรือเพิ่มงบประมาณ</p>
+        <h3 class="text-lg font-medium text-yellow-800 mb-2">No results found</h3>
+        <p class="text-yellow-700 mb-4">Try adjusting your filters or increasing the budget.</p>
         <div class="flex flex-col sm:flex-row gap-3 justify-center">
           <button type="button" onclick="history.back()" 
                   class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 focus-visible:ring-2 ring-gray-600">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            ย้อนกลับ
+            Back
           </button>
           <a href="{{ url_for('shop.search') }}" 
              class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
-            ค้นหาใหม่
+            New search
           </a>
         </div>
       </div>
@@ -214,13 +213,13 @@
   {% endif %}
 </div>
 
-{# ===== Overlay โหลดระหว่างส่งไปยัง AI ===== #}
+{# ===== Loading overlay while sending to AI ===== #}
 <div id="loading-overlay" class="fixed inset-0 z-[60] hidden items-center justify-center bg-white/80 backdrop-blur-sm">
   <div class="w-full max-w-sm mx-auto rounded-2xl border bg-white shadow-lg p-6 text-center">
     <div class="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-blue-600/30 border-t-blue-600 animate-spin"></div>
-    <h3 class="text-lg font-semibold text-gray-900">กำลังวิเคราะห์รถที่เหมาะกับคุณ…</h3>
-    <p class="mt-1 text-sm text-gray-600">ระบบกำลังประมวลผลข้อมูลราคา สเปก และเงื่อนไขที่คุณกรอก</p>
-    <p class="mt-3 text-xs text-gray-400" aria-live="polite">โปรดอย่าปิดหน้านี้</p>
+    <h3 class="text-lg font-semibold text-gray-900">Analyzing the best car for you…</h3>
+    <p class="mt-1 text-sm text-gray-600">Processing prices, specs, and your input preferences.</p>
+    <p class="mt-3 text-xs text-gray-400" aria-live="polite">Please don’t close this page.</p>
   </div>
 </div>
 
@@ -234,27 +233,23 @@
     const text = link.querySelector('.bestcar-text');
 
     link.addEventListener('click', function (e) {
-      // เปิด overlay และเปลี่ยนสถานะปุ่มก่อนเปลี่ยนหน้า
+      // Show overlay and change button state before navigating
       try {
         e.preventDefault();
 
-        // แสดง overlay
         overlay.classList.remove('hidden');
         overlay.classList.add('flex');
 
-        // ล็อกปุ่ม + เปลี่ยนเป็นกำลังทำงาน
         link.classList.add('opacity-80', 'cursor-not-allowed');
         link.setAttribute('aria-busy', 'true');
 
         if (icon) {
-          // แปลงไอคอนเป็นตัวหมุน
           icon.setAttribute('viewBox', '0 0 24 24');
           icon.innerHTML = '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>';
           icon.classList.add('animate-spin');
         }
-        if (text) text.textContent = 'กำลังค้นหารถที่เหมาะสมให้คุณ…';
+        if (text) text.textContent = 'Finding the best car for you…';
 
-        // หน่วง 1 เฟรมให้เบราว์เซอร์วาด overlay แล้วค่อยนำทาง
         const go = () => { window.location.href = link.href; };
         if (window.requestAnimationFrame) {
           requestAnimationFrame(() => setTimeout(go, 50));
@@ -262,7 +257,6 @@
           setTimeout(go, 50);
         }
       } catch (err) {
-        // ถ้า JS มีปัญหา ให้ปล่อยลิงก์เดิมทำงานตามปกติ
         window.location.href = link.href;
       }
     }, { passive: false });

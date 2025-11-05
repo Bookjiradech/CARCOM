@@ -1,16 +1,15 @@
-
 {% extends "layout.html" %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6">
   <div class="mb-6">
-    <h1 class="text-2xl font-semibold text-gray-900 mb-2">คันที่เหมาะกับคุณที่สุด</h1>
-    <p class="text-gray-600">รถยนต์ที่แนะนำโดย AI ตามความต้องการของคุณ</p>
+    <h1 class="text-2xl font-semibold text-gray-900 mb-2">Best Match for You</h1>
+    <p class="text-gray-600">AI-recommended car based on your preferences</p>
   </div>
 
   <div class="flex items-center gap-2 mb-6">
     <a href="{{ url_for('shop.search_view', session_id=session.id) }}"
        class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900 focus-visible:ring-2 ring-gray-600">
-      ย้อนกลับไปดูรายการทั้งหมด
+      Back to all results
     </a>
   </div>
 
@@ -41,14 +40,14 @@
                 <img src="/img-proxy?u={{ src|urlencode }}" alt="{{ car.title or (brand ~ ' ' ~ (model or '')) }}" class="w-full h-64 object-cover">
               {% endif %}
             {% else %}
-              <div class="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500">ไม่มีรูปภาพ</div>
+              <div class="w-full h-64 bg-gray-200 flex items-center justify-center text-gray-500">No image</div>
             {% endif %}
           </div>
           <div class="md:w-1/2 p-6">
             <div class="flex items-start justify-between gap-2">
               <div class="font-semibold text-lg leading-snug">
                 <a href="{{ car.source_url or '#' }}" target="_blank" rel="noopener" class="hover:underline">
-                  {{ car.title or (brand ~ ' ' ~ (model or '')) or 'ไม่พบชื่อรุ่น' }}
+                  {{ car.title or (brand ~ ' ' ~ (model or '')) or 'Model name not found' }}
                 </a>
               </div>
               <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">
@@ -68,27 +67,27 @@
 
             <div class="mt-4 text-sm text-gray-700 space-y-2">
               <div class="truncate">
-                <b>ผู้ขาย:</b> {{ seller or '—' }}
+                <b>Seller:</b> {{ seller or '—' }}
                 <span class="text-gray-400 px-1">•</span>
-                <b>ที่ตั้ง:</b> {{ location or '—' }}
+                <b>Location:</b> {{ location or '—' }}
               </div>
-              <div><b>ยี่ห้อ/รุ่น:</b> {{ brand or '—' }} {{ model or '' }}</div>
+              <div><b>Brand/Model:</b> {{ brand or '—' }} {{ model or '' }}</div>
               <div class="flex gap-6">
-                <div><b>ปี:</b> {{ year or '—' }}</div>
-                <div><b>เลขไมล์:</b>
+                <div><b>Year:</b> {{ year or '—' }}</div>
+                <div><b>Mileage:</b>
                   {% if mileage %}
-                    {% if mileage is number %}{{ "{:,}".format(mileage) }} กม.{% else %}{{ mileage }}{% endif %}
+                    {% if mileage is number %}{{ "{:,}".format(mileage) }} km{% else %}{{ mileage }}{% endif %}
                   {% else %}—{% endif %}
                 </div>
               </div>
               <div class="flex gap-6">
-                <div><b>เชื้อเพลิง:</b> {{ fuel or '—' }}</div>
-                <div><b>เกียร์:</b> {{ gear or '—' }}</div>
+                <div><b>Fuel:</b> {{ fuel or '—' }}</div>
+                <div><b>Transmission:</b> {{ gear or '—' }}</div>
               </div>
             </div>
 
             <div class="mt-4 p-4 bg-green-50 rounded-xl border border-green-100">
-              <b class="text-green-800">เหตุผลที่แนะนำ:</b>
+              <b class="text-green-800">Why we recommend it:</b>
               <div class="mt-2 text-green-700 whitespace-pre-line">{{ reason }}</div>
             </div>
 
@@ -100,12 +99,12 @@
                 <svg class="w-4 h-4 mr-2 next-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13l-3 3m0 0l-3-3m3 3V8" />
                 </svg>
-                <span class="next-text">ค้นหาใหม่ (ดูคันถัดไป)</span>
+                <span class="next-text">Search again (next candidate)</span>
               </a>
               {% endif %}
               <a href="{{ car.source_url or '#' }}" target="_blank" rel="noopener"
                  class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
-                ดูเพิ่มเติมบนเว็บไซต์
+                View on source site
               </a>
             </div>
           </div>
@@ -115,7 +114,7 @@
 
     {% if others and others|length > 0 %}
     <div class="md:col-span-3 mt-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">ตัวเลือกอื่น ๆ</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Other options</h2>
       <div class="grid md:grid-cols-4 gap-4">
         {% for c in others %}
           {% set ex = c.extra or {} %}
@@ -139,13 +138,13 @@
                   <img src="/img-proxy?u={{ src2|urlencode }}" class="w-full h-36 object-cover" alt="{{ c.title or (brand ~ ' ' ~ (model or '')) }}">
                 {% endif %}
               {% else %}
-                <div class="w-full h-36 bg-gray-200 flex items-center justify-center text-gray-500">ไม่มีรูปภาพ</div>
+                <div class="w-full h-36 bg-gray-200 flex items-center justify-center text-gray-500">No image</div>
               {% endif %}
             </a>
             <div class="p-3">
               <div class="font-medium leading-tight line-clamp-2 min-h-[3rem]">
                 <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" class="hover:underline">
-                  {{ c.title or (brand ~ ' ' ~ (model or '')) or 'ไม่พบชื่อรุ่น' }}
+                  {{ c.title or (brand ~ ' ' ~ (model or '')) or 'Model name not found' }}
                 </a>
                 <span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 align-middle">
                   {{ (c.source or c.source_site or '')|upper }}
@@ -161,14 +160,14 @@
                 {% endif %}
               </div>
               <div class="text-xs text-gray-600 mt-1">
-                ปี: {{ year or '—' }} • ไมล์:
+                Year: {{ year or '—' }} • Mileage:
                 {% if mileage %}{% if mileage is number %}{{ "{:,}".format(mileage) }}{% else %}{{ mileage }}{% endif %}{% else %}—{% endif %}
               </div>
               <div class="text-xs text-gray-600 truncate mt-1">
                 {{ (seller2 or '—') ~ ' • ' ~ (loc2 or '—') }}
               </div>
               <div class="mt-2">
-                <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" class="text-blue-600 hover:underline text-sm">เปิดประกาศ</a>
+                <a href="{{ c.source_url or '#' }}" target="_blank" rel="noopener" class="text-blue-600 hover:underline text-sm">Open listing</a>
               </div>
             </div>
           </div>
@@ -179,13 +178,13 @@
   </div>
 </div>
 
-{# ===== Overlay โหลดระหว่างเปลี่ยนไปคันถัดไป ===== #}
+{# ===== Loading overlay while moving to next candidate ===== #}
 <div id="loading-overlay" class="fixed inset-0 z-[60] hidden items-center justify-center bg-white/80 backdrop-blur-sm">
   <div class="w-full max-w-sm mx-auto rounded-2xl border bg-white shadow-lg p-6 text-center">
     <div class="mx-auto mb-4 h-12 w-12 rounded-full border-4 border-gray-400/30 border-t-gray-700 animate-spin"></div>
-    <h3 class="text-lg font-semibold text-gray-900">กำลังค้นหาคันถัดไป…</h3>
-    <p class="mt-1 text-sm text-gray-600">ระบบจะอัปเดตคำแนะนำใหม่จากตัวเลือกที่เหลือ</p>
-    <p class="mt-3 text-xs text-gray-400" aria-live="polite">โปรดอย่าปิดหน้านี้</p>
+    <h3 class="text-lg font-semibold text-gray-900">Searching for the next candidate…</h3>
+    <p class="mt-1 text-sm text-gray-600">We’ll refresh the recommendation from remaining options.</p>
+    <p class="mt-3 text-xs text-gray-400" aria-live="polite">Please don’t close this page.</p>
   </div>
 </div>
 
@@ -202,11 +201,11 @@
       try {
         e.preventDefault();
 
-        // แสดง overlay
+        // Show overlay
         overlay.classList.remove('hidden');
         overlay.classList.add('flex');
 
-        // ล็อกปุ่ม + สลับเป็นสถานะกำลังโหลด
+        // Lock button + loading state
         link.classList.add('opacity-80', 'cursor-not-allowed');
         link.setAttribute('aria-busy', 'true');
 
@@ -215,9 +214,8 @@
           icon.innerHTML = '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>';
           icon.classList.add('animate-spin', 'mr-2');
         }
-        if (text) text.textContent = 'กำลังค้นหาคันถัดไป…';
+        if (text) text.textContent = 'Searching for the next candidate…';
 
-        // หน่วงเล็กน้อยให้เบราว์เซอร์วาด overlay แล้วค่อยเปลี่ยนหน้า
         const go = () => { window.location.href = link.href; };
         if (window.requestAnimationFrame) {
           requestAnimationFrame(() => setTimeout(go, 50));

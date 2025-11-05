@@ -2,18 +2,18 @@
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8">
   <div class="mb-8">
-    <h1 class="text-3xl font-semibold text-gray-900 mb-2">สั่งซื้อแพ็กเกจ</h1>
-    <p class="text-gray-600">เลือกแพ็กเกจที่เหมาะสมกับความต้องการของคุณ</p>
+    <h1 class="text-3xl font-semibold text-gray-900 mb-2">Purchase Packages</h1>
+    <p class="text-gray-600">Choose the package that fits your needs</p>
   </div>
 
   {% if packages|length == 0 %}
     <div class="bg-gray-50 rounded-2xl p-8 text-center">
-      <div class="text-gray-600">ยังไม่มีแพ็กเกจให้เลือก</div>
+      <div class="text-gray-600">No packages available</div>
     </div>
   {% else %}
     <div class="grid md:grid-cols-3 gap-6">
       {% for pkg in packages %}
-        {# ✅ ใช้ค่าจาก backend #}
+        {# ✅ values from backend #}
         {% set base = pkg._base %}
         {% set eff = pkg._eff %}
         {% set promo_active = pkg._promo_active %}
@@ -23,7 +23,7 @@
           <div class="flex items-start justify-between gap-2">
             <div class="text-xl font-semibold text-gray-900">{{ pkg.name }}</div>
             {% if pkg.status != 'active' %}
-              <span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700">สถานะ: {{ pkg.status }}</span>
+              <span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700">Status: {{ pkg.status }}</span>
             {% endif %}
           </div>
 
@@ -32,7 +32,7 @@
               <div class="text-sm text-amber-800">
                 <b>{{ pkg.promotion.code }}</b> - {{ pkg.promotion.name }}
                 {% if pkg.promotion.discount_percent %}
-                  (ลด {{ pkg.promotion.discount_percent }}%)
+                  ({{ pkg.promotion.discount_percent }}% off)
                 {% endif %}
               </div>
             </div>
@@ -42,25 +42,25 @@
             {% if promo_active and eff < base %}
               <div class="text-sm text-gray-500 line-through">{{ "{:,.2f}".format(base) }} ฿</div>
               <div class="text-2xl font-bold text-green-600">{{ "{:,.2f}".format(eff) }} ฿</div>
-              <div class="text-xs text-gray-500">ราคานี้รวม VAT 7% แล้ว (ไม่คิดเพิ่ม)</div>
+              <div class="text-xs text-gray-500">Price <b>includes 7% VAT</b> (no extra charge)</div>
             {% else %}
               <div class="text-2xl font-bold text-gray-900">{{ "{:,.2f}".format(base) }} ฿</div>
-              <div class="text-xs text-gray-500">ราคานี้รวม VAT 7% แล้ว (ไม่คิดเพิ่ม)</div>
+              <div class="text-xs text-gray-500">Price <b>includes 7% VAT</b> (no extra charge)</div>
             {% endif %}
           </div>
 
           <div class="mt-4 space-y-2 text-sm text-gray-600">
             <div class="flex justify-between">
-              <span>เครดิต:</span>
+              <span>Credits:</span>
               <span class="font-medium">{{ pkg.credits or 0 }}</span>
             </div>
             <div class="flex justify-between">
-              <span>ระยะเวลา:</span>
+              <span>Duration:</span>
               <span class="font-medium">
                 {% if pkg.is_lifetime %}
-                  ตลอดชีพ
+                  Lifetime
                 {% else %}
-                  {{ pkg.duration_days or 0 }} วัน
+                  {{ pkg.duration_days or 0 }} days
                 {% endif %}
               </span>
             </div>
@@ -70,13 +70,13 @@
             {% if is_trial_pkg %}
               {% if trial_used %}
                 <button class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium bg-gray-100 text-gray-600 cursor-not-allowed" disabled>
-                  ทดลองใช้แล้ว
+                  Trial already used
                 </button>
               {% else %}
                 <form method="post" action="{{ url_for('shop.activate_free', pkg_id=pkg.id) }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
-                    ทดลองใช้ฟรี
+                    Get free trial
                   </button>
                 </form>
               {% endif %}
@@ -84,7 +84,7 @@
               <form method="post" action="{{ url_for('shop.buy_package', pkg_id=pkg.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
-                  สั่งซื้อแพ็กเกจ
+                  Buy package
                 </button>
               </form>
             {% endif %}
