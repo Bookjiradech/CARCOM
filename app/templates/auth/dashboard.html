@@ -3,10 +3,10 @@
 <div class="max-w-7xl mx-auto px-4 py-6">
   <div class="mb-8">
     <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-    <p class="text-gray-600 mt-2">ภาพรวมระบบและการจัดการ</p>
+    <p class="text-gray-600 mt-2">System overview & management</p>
   </div>
 
-   Modern stats cards with better visual hierarchy 
+  <!-- Modern stats cards with better visual hierarchy -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-lg shadow-sm border p-6">
       <div class="flex items-center">
@@ -57,7 +57,7 @@
     </div>
   </div>
 
-   Enhanced activity sections with modern card design 
+  <!-- Enhanced activity sections with modern card design -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <div class="bg-white rounded-lg shadow-sm border">
       <div class="px-6 py-4 border-b border-gray-200">
@@ -70,8 +70,8 @@
             </div>
           </div>
           <div class="ml-3">
-            <h3 class="text-lg font-medium text-gray-900">รออนุมัติ</h3>
-            <p class="text-sm text-gray-500">{{ pending|length }} รายการ</p>
+            <h3 class="text-lg font-medium text-gray-900">Pending Approval</h3>
+            <p class="text-sm text-gray-500">{{ pending|length }} items</p>
           </div>
         </div>
       </div>
@@ -91,7 +91,7 @@
                 </div>
                 <div class="flex-shrink-0">
                   <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
-                    รอดำเนินการ
+                    Pending
                   </span>
                 </div>
               </div>
@@ -102,7 +102,7 @@
             <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <p class="text-gray-500">ไม่มีงานค้าง</p>
+            <p class="text-gray-500">No pending tasks</p>
           </div>
         {% endif %}
       </div>
@@ -119,8 +119,8 @@
             </div>
           </div>
           <div class="ml-3">
-            <h3 class="text-lg font-medium text-gray-900">เพิ่งอนุมัติล่าสุด</h3>
-            <p class="text-sm text-gray-500">รายการที่ผ่านการอนุมัติแล้ว</p>
+            <h3 class="text-lg font-medium text-gray-900">Recently Approved</h3>
+            <p class="text-sm text-gray-500">Approved items</p>
           </div>
         </div>
       </div>
@@ -140,7 +140,7 @@
                 </div>
                 <div class="flex-shrink-0">
                   <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                    อนุมัติแล้ว
+                    Approved
                   </span>
                 </div>
               </div>
@@ -151,7 +151,7 @@
             <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
             </svg>
-            <p class="text-gray-500">ยังไม่มีรายการที่อนุมัติ</p>
+            <p class="text-gray-500">No approved items yet</p>
           </div>
         {% endif %}
       </div>
