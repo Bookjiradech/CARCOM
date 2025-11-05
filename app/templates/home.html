@@ -4,10 +4,10 @@
 <div class="text-center space-y-8">
   <div class="max-w-3xl mx-auto ">
     <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4 mt-10">
-      ยินดีต้อนรับสู่ <span class="text-blue-600">CARCOM</span>
+      Welcome to <span class="text-blue-600">CARCOM</span>
     </h1>
     <p class="text-xl text-gray-600 leading-relaxed">
-      เว็บไซต์สืบค้นรถยนต์มือสองจากหลายแหล่งข้อมูล และคิดค่าบริการเป็นแพ็กเกจตามจำนวนครั้งที่ใช้งาน
+      A multi-source used-car search website with package-based pricing per usage.
     </p>
   </div>
 
@@ -19,8 +19,8 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
       </div>
-      <h3 class="text-lg font-semibold text-gray-900 mb-2">ค้นหาครอบคลุม</h3>
-      <p class="text-sm text-gray-600">ค้นหารถจากหลายแหล่งข้อมูลในที่เดียว</p>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Comprehensive search</h3>
+      <p class="text-sm text-gray-600">Search cars from multiple sources in one place</p>
     </div>
     
     <div class="bg-white rounded-2xl shadow-sm border p-6 text-center">
@@ -29,8 +29,8 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
         </svg>
       </div>
-      <h3 class="text-lg font-semibold text-gray-900 mb-2">ราคาเป็นธรรม</h3>
-      <p class="text-sm text-gray-600">จ่ายตามการใช้งานจริงด้วยระบบแพ็กเกจ</p>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Fair pricing</h3>
+      <p class="text-sm text-gray-600">Pay based on actual usage with packages</p>
     </div>
     
     <div class="bg-white rounded-2xl shadow-sm border p-6 text-center">
@@ -39,8 +39,8 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
         </svg>
       </div>
-      <h3 class="text-lg font-semibold text-gray-900 mb-2">รวดเร็ว</h3>
-      <p class="text-sm text-gray-600">ผลลัพธ์การค้นหาที่รวดเร็วและแม่นยำ</p>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Fast</h3>
+      <p class="text-sm text-gray-600">Fast and accurate search results</p>
     </div>
   </div>
 
@@ -54,7 +54,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
-            เริ่มค้นหา
+            Start searching
           </a>
           
           <a href="{{ url_for('shop.list_packages') }}" 
@@ -62,7 +62,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
             </svg>
-            ซื้อแพ็กเกจ
+            Buy packages
           </a>
         </div>
         
@@ -71,7 +71,7 @@
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
           </svg>
-          บัญชีของฉัน
+          My account
         </a>
       </div>
     {% else %}
@@ -82,7 +82,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
             </svg>
-            สมัครสมาชิก
+            Sign up
           </a>
           
           <a href="{{ url_for('auth.login') }}" 
@@ -90,7 +90,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
             </svg>
-            เข้าสู่ระบบ
+            Log in
           </a>
         </div>
         
@@ -100,7 +100,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
           </svg>
-          ดูแพ็กเกจ
+          View packages
         </a>
       </div>
     {% endif %}
