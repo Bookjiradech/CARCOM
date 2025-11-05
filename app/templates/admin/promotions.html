@@ -4,14 +4,14 @@
   <!-- Header -->
   <header class="mb-8">
     <h1 class="text-3xl font-semibold text-gray-900">Promotion Management</h1>
-    <p class="text-sm text-gray-600 mt-1">จัดการโค้ดลดราคา สร้าง ปรับแก้ ค้นหา และเรียงลำดับโปรโมชันทั้งหมด</p>
+    <p class="text-sm text-gray-600 mt-1">Manage discount codes: create, edit, search, and sort all promotions</p>
   </header>
 
 
   
   <!-- Create: ensure Add button is on the SAME line at md+ -->
   <section aria-labelledby="create-title" class="mb-8">
-    <h2 id="create-title" class="text-2xl font-semibold mb-4">เพิ่มโปรโมชันใหม่</h2>
+    <h2 id="create-title" class="text-2xl font-semibold mb-4">Add New Promotion</h2>
     <form method="post" action="{{ url_for('admin.promotions_create', **request.args) }}" class="p-6 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <!-- 12 columns: 2 + 3 + 1 + 2 + 2 + 1 + 1 = 12 -->
@@ -72,41 +72,41 @@
   </section>
   <!-- Filters -->
   <section aria-labelledby="filters-title" class="mb-8">
-    <h2 id="filters-title" class="sr-only">ฟอร์มกรองรายการโปรโมชัน</h2>
+    <h2 id="filters-title" class="sr-only">Promotion filters form</h2>
     <form method="get" class="p-5 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
         <div class="md:col-span-5">
-          <label for="q" class="block text-sm text-gray-700 mb-1">ค้นหา</label>
+          <label for="q" class="block text-sm text-gray-700 mb-1">Search</label>
           <input id="q" name="q" value="{{ q or '' }}" placeholder="Code/Name"
                  class="h-10 w-full rounded-lg border border-gray-300 px-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600">
-          <p class="text-xs text-gray-500 mt-1 md:hidden">พิมพ์รหัสหรือชื่อโปรโมชัน เช่น <span class="font-medium">NEWYEAR25</span></p>
+          <p class="text-xs text-gray-500 mt-1 md:hidden">Type the promotion code or name, e.g. <span class="font-medium">NEWYEAR25</span></p>
         </div>
 
         <div class="md:col-span-3">
-          <label for="status" class="block text-sm text-gray-700 mb-1">สถานะ</label>
+          <label for="status" class="block text-sm text-gray-700 mb-1">Status</label>
           <select id="status" name="status"
                   class="h-10 w-full rounded-lg border border-gray-300 px-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600">
-            <option value="all" {{ status=='all' and 'selected' or '' }}>ทั้งหมด</option>
+            <option value="all" {{ status=='all' and 'selected' or '' }}>All</option>
             <option value="active" {{ status=='active' and 'selected' or '' }}>active</option>
             <option value="inactive" {{ status=='inactive' and 'selected' or '' }}>inactive</option>
           </select>
         </div>
 
         <div class="md:col-span-3">
-          <label for="sort" class="block text-sm text-gray-700 mb-1">เรียง</label>
+          <label for="sort" class="block text-sm text-gray-700 mb-1">Sort</label>
           <select id="sort" name="sort"
                   class="h-10 w-full rounded-lg border border-gray-300 px-3 focus:border-blue-600 focus:ring-2 focus:ring-blue-600">
-            <option value="created_desc" {{ sort=='created_desc' and 'selected' or '' }}>สร้างล่าสุด</option>
-            <option value="created_asc"  {{ sort=='created_asc'  and 'selected' or '' }}>สร้างเก่าสุด</option>
-            <option value="updated_desc" {{ sort=='updated_desc' and 'selected' or '' }}>อัปเดตล่าสุด</option>
-            <option value="updated_asc"  {{ sort=='updated_asc'  and 'selected' or '' }}>อัปเดตเก่าสุด</option>
+            <option value="created_desc" {{ sort=='created_desc' and 'selected' or '' }}>Created (newest)</option>
+            <option value="created_asc"  {{ sort=='created_asc'  and 'selected' or '' }}>Created (oldest)</option>
+            <option value="updated_desc" {{ sort=='updated_desc' and 'selected' or '' }}>Updated (newest)</option>
+            <option value="updated_asc"  {{ sort=='updated_asc'  and 'selected' or '' }}>Updated (oldest)</option>
           </select>
         </div>
 
         <div class="md:col-span-1 flex md:justify-end">
           <button type="submit"
                   class="btn btn-secondary inline-flex items-center rounded-lg px-4 py-2 font-medium bg-gray-800 text-white hover:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-800">
-            กรอง
+            Filter
           </button>
         </div>
       </div>
@@ -116,7 +116,7 @@
 
   <!-- Table -->
   <section aria-labelledby="list-title">
-    <h2 id="list-title" class="text-2xl font-semibold mb-4">รายการโปรโมชัน</h2>
+    <h2 id="list-title" class="text-2xl font-semibold mb-4">Promotion List</h2>
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
       {% if rows and rows|length > 0 %}
@@ -141,20 +141,20 @@
               <form method="post" action="{{ url_for('admin.promotions_update', pid=p.id, **request.args) }}" class="contents">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input name="code" value="{{ p.code }}"
-                       aria-label="Code ของ {{ 'PM%03d'|format(p.id) }}"
+                       aria-label="Code of {{ 'PM%03d'|format(p.id) }}"
                        class="h-9 w-32 rounded border border-gray-300 px-2 focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
             </td>
 
             <td class="px-4 py-3">
               <input name="name" value="{{ p.name }}"
-                     aria-label="Name ของ {{ 'PM%03d'|format(p.id) }}"
+                     aria-label="Name of {{ 'PM%03d'|format(p.id) }}"
                      class="h-9 w-48 rounded border border-gray-300 px-2 focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
             </td>
 
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <input name="discount_percent" value="{{ p.discount_percent or 0 }}" inputmode="decimal"
-                       aria-label="ส่วนลด (%) ของ {{ 'PM%03d'|format(p.id) }}"
+                       aria-label="Discount (%) of {{ 'PM%03d'|format(p.id) }}"
                        class="h-9 w-16 rounded border border-gray-300 px-2 focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
                 <span class="text-gray-600">%</span>
               </div>
@@ -163,17 +163,17 @@
             <td class="px-4 py-3">
               <div class="flex flex-col sm:flex-row gap-2">
                 <input type="date" name="start_date" value="{{ p.start_date }}"
-                       aria-label="วันที่เริ่มของ {{ 'PM%03d'|format(p.id) }}"
+                       aria-label="Start date of {{ 'PM%03d'|format(p.id) }}"
                        class="h-9 rounded border border-gray-300 px-2 focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
                 <input type="date" name="end_date" value="{{ p.end_date }}"
-                       aria-label="วันที่สิ้นสุดของ {{ 'PM%03d'|format(p.id) }}"
+                       aria-label="End date of {{ 'PM%03d'|format(p.id) }}"
                        class="h-9 rounded border border-gray-300 px-2 focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
               </div>
             </td>
 
             <td class="px-4 py-3">
               <select name="status"
-                      aria-label="สถานะของ {{ 'PM%03d'|format(p.id) }}"
+                      aria-label="Status of {{ 'PM%03d'|format(p.id) }}"
                       class="h-9 rounded border border-gray-300 px-2 focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
                 <option value="active" {{ p.status=='active' and 'selected' or '' }}>active</option>
                 <option value="inactive" {{ p.status=='inactive' and 'selected' or '' }}>inactive</option>
@@ -183,7 +183,7 @@
             <td class="px-4 py-3">
               <button type="submit"
                       class="btn btn-primary inline-flex items-center rounded-lg px-3 py-1.5 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-600 text-sm"
-                      aria-label="บันทึก {{ 'PM%03d'|format(p.id) }}">
+                      aria-label="Save {{ 'PM%03d'|format(p.id) }}">
                 Save
               </button>
               </form>
@@ -194,7 +194,7 @@
       </table>
       {% else %}
       <div class="p-6">
-        <p class="text-sm text-gray-600">ยังไม่มีโปรโมชันในระบบ</p>
+        <p class="text-sm text-gray-600">No promotions yet</p>
       </div>
       {% endif %}
     </div>

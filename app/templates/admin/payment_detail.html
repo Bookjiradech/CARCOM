@@ -9,7 +9,7 @@
       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
       </svg>
-      ย้อนกลับ
+      Back
     </a>
     <h1 class="text-3xl font-semibold">Payment #{{ "PAY%05d"|format(p.id) }}</h1>
   </div>
@@ -18,7 +18,7 @@
 
     <!-- Payment Information Card -->
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-      <h2 class="text-2xl font-semibold mb-6">ข้อมูลการชำระเงิน</h2>
+      <h2 class="text-2xl font-semibold mb-6">Payment Information</h2>
       <dl class="space-y-4 text-base">
         <div class="flex flex-col sm:flex-row sm:justify-between py-2 border-b border-gray-100">
           <dt class="font-medium text-sm text-gray-600 mb-1 sm:mb-0">User:</dt>
@@ -80,7 +80,7 @@
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            อนุมัติ
+            Approve
           </button>
         </form>
         {% endif %}
@@ -92,7 +92,7 @@
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
-            ปฏิเสธ
+            Reject
           </button>
         </form>
         {% endif %}
@@ -101,7 +101,7 @@
 
     <!-- Payment Slip Card -->
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-      <h2 class="text-2xl font-semibold mb-6">สลิปการโอน</h2>
+      <h2 class="text-2xl font-semibold mb-6">Transfer Slip</h2>
       {% if p.slip_url %}
       <div class="mb-4">
         <a class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-ghost bg-blue-50 text-blue-600 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
@@ -109,7 +109,7 @@
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
           </svg>
-          เปิดไฟล์ต้นฉบับ
+          Open original file
         </a>
       </div>
       {% set ext = (p.slip_url.rsplit('.', 1)[-1] if '.' in (p.slip_url or '') else '').lower() %}
@@ -122,7 +122,7 @@
         <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
         </svg>
-        <p>ไฟล์แนบ (กดลิงก์ด้านบนเพื่อเปิด)</p>
+        <p>Attachment (click the link above to open)</p>
       </div>
       {% endif %}
       {% else %}
@@ -130,8 +130,8 @@
         <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
         </svg>
-        <p class="text-lg font-medium mb-1">ยังไม่มีสลิป</p>
-        <p class="text-sm">รอลูกค้าอัปโหลดหลักฐานการโอนเงิน</p>
+        <p class="text-lg font-medium mb-1">No slip yet</p>
+        <p class="text-sm">Waiting for the customer to upload proof of transfer</p>
       </div>
       {% endif %}
     </div>

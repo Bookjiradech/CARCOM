@@ -1,4 +1,3 @@
-
 {% extends "layout.html" %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-10">
@@ -8,9 +7,9 @@
   <form method="post" action="{{ url_for('admin.packages_create') }}"
     class="p-6 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-8">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <h2 class="text-xl font-semibold mb-4 text-gray-800">เพิ่มแพ็กเกจใหม่</h2>
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">Add New Package</h2>
 
-    <!-- ใช้ flex และไม่ให้ขึ้นบรรทัดใหม่บน md+ -->
+    <!-- Use flex and keep single-line on md+ -->
     <div class="flex flex-wrap md:flex-nowrap items-end gap-4">
       <div class="w-28">
         <label for="new-code" class="block text-sm font-medium text-gray-700 mb-1">Code</label>
@@ -85,9 +84,9 @@
       <label for="lifetime-filter" class="block text-sm font-medium text-gray-700 mb-1">Lifetime</label>
       <select name="lifetime" id="lifetime-filter"
         class="h-10 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors">
-        <option value="all" {{ lifetime=='all' and 'selected' or '' }}>ทั้งหมด</option>
-        <option value="yes" {{ lifetime=='yes' and 'selected' or '' }}>เฉพาะ Lifetime</option>
-        <option value="no" {{ lifetime=='no' and 'selected' or '' }}>ไม่ใช่ Lifetime</option>
+        <option value="all" {{ lifetime=='all' and 'selected' or '' }}>All</option>
+        <option value="yes" {{ lifetime=='yes' and 'selected' or '' }}>Lifetime only</option>
+        <option value="no" {{ lifetime=='no' and 'selected' or '' }}>Not lifetime</option>
       </select>
     </div>
 
@@ -95,20 +94,20 @@
       <label for="sort-filter" class="block text-sm font-medium text-gray-700 mb-1">Sort</label>
       <select name="sort" id="sort-filter"
         class="h-10 rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 pl-3 transition-colors">
-        <option value="id_desc" {{ sort=='id_desc' and 'selected' or '' }}>ID มาก→น้อย</option>
-        <option value="id_asc" {{ sort=='id_asc' and 'selected' or '' }}>ID น้อย→มาก</option>
-        <option value="price_desc" {{ sort=='price_desc' and 'selected' or '' }}>ราคา สูง→ต่ำ</option>
-        <option value="price_asc" {{ sort=='price_asc' and 'selected' or '' }}>ราคา ต่ำ→สูง</option>
-        <option value="credits_desc" {{ sort=='credits_desc' and 'selected' or '' }}>เครดิต มาก→น้อย</option>
-        <option value="credits_asc" {{ sort=='credits_asc' and 'selected' or '' }}>เครดิต น้อย→มาก</option>
+        <option value="id_desc" {{ sort=='id_desc' and 'selected' or '' }}>ID High→Low</option>
+        <option value="id_asc" {{ sort=='id_asc' and 'selected' or '' }}>ID Low→High</option>
+        <option value="price_desc" {{ sort=='price_desc' and 'selected' or '' }}>Price High→Low</option>
+        <option value="price_asc" {{ sort=='price_asc' and 'selected' or '' }}>Price Low→High</option>
+        <option value="credits_desc" {{ sort=='credits_desc' and 'selected' or '' }}>Credits High→Low</option>
+        <option value="credits_asc" {{ sort=='credits_asc' and 'selected' or '' }}>Credits Low→High</option>
       </select>
     </div>
 
     <button type="submit"
-      class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-secondary bg-gray-800 text-white hover:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-800">กรอง</button>
+      class="inline-flex items-center rounded-lg px-4 py-2 font-medium btn-secondary bg-gray-800 text-white hover:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-800">Filter</button>
   </form>
 
-  <!-- Table View (card คุมเต็ม + จัดกึ่งกลางพอดี) -->
+  <!-- Table View (card fits full width + perfectly centered) -->
 <div class="mx-auto bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hidden md:block">
   <table class="w-full text-sm">
     <thead class="bg-gray-50 text-gray-600">
@@ -134,7 +133,7 @@
           {{ "PKG%03d"|format(p.id) }}
         </td>
 
-        <!-- เริ่มฟอร์มตั้งแต่คอลัมน์ Code -->
+        <!-- Start form from Code column -->
         <td class="px-3 py-2">
           <form method="post" action="{{ url_for('admin.packages_update', pkg_id=p.id, **request.args) }}" class="contents">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
