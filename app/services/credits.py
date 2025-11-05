@@ -4,9 +4,9 @@ from app.models import UserPackage
 
 def consume_one_credit(db, user_id: int) -> bool:
     """
-    ตัดเครดิต 1 หน่วยจากแพ็กเกจที่ยัง active และมีเครดิต > 0
-    เลือกใช้แพ็กเกจที่ 'ใกล้หมดอายุ' ก่อน (end_at น้อยก่อน, NULL ไปท้ายสุด)
-    คืนค่า True ถ้าตัดสำเร็จ, False ถ้าเครดิตไม่พอ
+    Deduct 1 credit from an active package that still has credits > 0.
+    Prefer the package that expires sooner first (smaller end_at first, NULL goes last).
+    Returns True if deduction succeeded, False if there are not enough credits.
     """
     q = (
         select(UserPackage)

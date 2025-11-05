@@ -14,10 +14,10 @@ def _to_float(x):
 
 def rank_cars(cars: List[Any], profile: Dict[str, Any]) -> Tuple[List[Any], str]:
     """
-    จัดอันดับแบบง่าย:
-      - ใกล้งบเป้าหมาย (ใช้ max_budget ถ้ามี ไม่งั้นใช้ min_budget)
-      - ปีใหม่กว่า ดีกว่า
-      - ไมล์น้อยกว่า ดีกว่า
+    Simple ranking:
+      - Closest to target budget (use max_budget if present, otherwise min_budget)
+      - Newer year is better
+      - Lower mileage is better
     """
     target = None
     if profile.get("max_budget"):
@@ -30,9 +30,9 @@ def rank_cars(cars: List[Any], profile: Dict[str, Any]) -> Tuple[List[Any], str]
         year  = getattr(c, "year", None) or 0
         mile  = getattr(c, "mileage_km", None) or 10**9
         diff  = abs(price - target) if target else price
-        # ยิ่งคะแนนต่ำยิ่งดี
+        # Lower score is better
         return (diff, -year, mile)
 
     ranked = sorted(cars, key=score)
-    explain = "เรียงจากรถที่ราคาใกล้งบประมาณมากที่สุด แล้วพิจารณาปีที่ใหม่กว่าและเลขไมล์ที่น้อยกว่า"
+    explain = "Sorted by price closest to the target budget, then by newer year and lower mileage."
     return ranked, explain

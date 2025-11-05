@@ -1,13 +1,13 @@
 # app/services/llm_prompt.py
 import json
 
-def _val(x, default="ไม่ระบุ"):
+def _val(x, default="N/A"):
     x = (x or "").strip() if isinstance(x, str) else x
     return x if x else default
 
 def build_cars_payload(cars, max_items=40):
     """
-    แปลงรายการ CarCache -> โครง JSON ที่กะทัดรัดสำหรับ LLM
+    Convert CarCache list -> compact JSON structure for the LLM.
     """
     payload = []
     for i, c in enumerate(cars[:max_items], start=1):
@@ -15,29 +15,29 @@ def build_cars_payload(cars, max_items=40):
         sp = ex.get("สเปกย่อย") or {}
 
         payload.append({
-            "ลำดับ": i,
+            "index": i,
             "car_id": c.id,
-            "แหล่ง": c.source,
-            "ชื่อ/หัวข้อ": c.title,
-            "ยี่ห้อ": c.brand or ex.get("ยี่ห้อ"),
-            "รุ่น": c.model or ex.get("รุ่น") or ex.get("ชื่อรุ่น"),
-            "รุ่นย่อย": ex.get("รุ่นย่อย") or sp.get("รุ่นย่อย"),
-            "ปี": c.year or ex.get("ปีรถ") or sp.get("ปีจดทะเบียน"),
-            "ราคา(บาท)": int(c.price_thb) if c.price_thb is not None else None,
-            "เลขไมล์(กม.)": c.mileage_km or ex.get("เลขไมล์") or ex.get("เลขไมล์(กม.)"),
-            "เชื้อเพลิง": ex.get("เชื้อเพลิง") or sp.get("เชื้อเพลิง"),
-            "เกียร์": ex.get("เกียร์") or sp.get("เกียร์"),
-            "ประเภทรถ": ex.get("ประเภทรถ") or ex.get("ประเภทย่อย") or sp.get("ประเภทรถ"),
-            "สี": ex.get("สี") or sp.get("สี"),
-            "จังหวัด/ที่ตั้ง": c.province or ex.get("ที่ตั้งรถ") or ex.get("จังหวัด"),
+            "source": c.source,
+            "title": c.title,
+            "brand": c.brand or ex.get("ยี่ห้อ"),
+            "model": c.model or ex.get("รุ่น") or ex.get("ชื่อรุ่น"),
+            "trim": ex.get("รุ่นย่อย") or sp.get("รุ่นย่อย"),
+            "year": c.year or ex.get("ปีรถ") or sp.get("ปีจดทะเบียน"),
+            "price_thb": int(c.price_thb) if c.price_thb is not None else None,
+            "mileage_km": c.mileage_km or ex.get("เลขไมล์") or ex.get("เลขไมล์(กม.)"),
+            "fuel": ex.get("เชื้อเพลิง") or sp.get("เชื้อเพลิง"),
+            "gear": ex.get("เกียร์") or sp.get("เกียร์"),
+            "body_type": ex.get("ประเภทรถ") or ex.get("ประเภทย่อย") or sp.get("ประเภทรถ"),
+            "color": ex.get("สี") or sp.get("สี"),
+            "province_or_location": c.province or ex.get("ที่ตั้งรถ") or ex.get("จังหวัด"),
             "URL": c.url,
-            "รูปภาพ": c.image_url,
+            "image_url": c.image_url,
         })
     return payload
 
 def build_gemini_prompt(cars, form_params, exclude_ids=None):
     """
-    exclude_ids: รายการ car_id ที่ไม่ให้เลือก (เวลาผู้ใช้กด 'ค้นหาใหม่')
+    exclude_ids: list of car_id that must not be selected (used when user asks for "another pick").
     """
     exclude_ids = exclude_ids or []
 
@@ -58,27 +58,29 @@ def build_gemini_prompt(cars, form_params, exclude_ids=None):
     cars_json = json.dumps(build_cars_payload(cars), ensure_ascii=False)
 
     prompt = f"""
-คุณคือที่ปรึกษาเลือกซื้อรถมือสองในประเทศไทย มีหน้าที่เลือก "รถที่เหมาะที่สุด" เพียง 1 คันจากรายการด้านล่าง
-**ห้าม** สร้างข้อมูลที่ไม่มีในรายการ และต้องยึดกฎต่อไปนี้:
+You are a used-car advisor in Thailand. Your task is to choose **exactly one** "best-fit" car from the list below.
+**Do not** fabricate information; follow these rules strictly.
 
-[ข้อมูลผู้ใช้]
-- คำค้นหา: {q or "ไม่ระบุ"}
-- งบขั้นต่ำ: {min_budget} บาท
-- รายได้ต่อเดือน: {salary}
-- เพศ: {gender}
-- สถานภาพสมรส: {marital}
-- อาชีพ: {occ}
-- ระดับการศึกษา: {edu}
-- ความต้องการเฉพาะ:
-  - ประเภทรถ: {car_type or "ทั้งหมด"}
-  - เชื้อเพลิง: {fuel_type or "ทั้งหมด"}
-  - เกียร์: {gear_type or "ทั้งหมด"}
-  - สี: {color or "ทั้งหมด"}
-- การใช้งานหลัก: {purpose}
-- ความต้องการอื่น ๆ: {other}
+[User Info]
+- Query: {q or "N/A"}
+- Minimum budget: {min_budget} THB
+- Monthly income: {salary}
+- Gender: {gender}
+- Marital status: {marital}
+- Occupation: {occ}
+- Education: {edu}
+- Specific preferences:
+  - Body type: {car_type or "All"}
+  - Fuel type: {fuel_type or "All"}
+  - Transmission: {gear_type or "All"}
+  - Color: {color or "All"}
+- Primary usage: {purpose}
+- Other preferences: {other}
 
-[ห้ามเลือก car_id ต่อไปนี้]: {exclude_ids if exclude_ids else "—"}
+[Do NOT select these car_id]: {exclude_ids if exclude_ids else "—"}
 
-[รายการรถที่ให้พิจารณา] (ลำดับที่ 1..N):
+[Candidate cars] (index 1..N):
 ```json
-{cars_json}""".strip()
+{cars_json}
+""".strip()
+    return prompt

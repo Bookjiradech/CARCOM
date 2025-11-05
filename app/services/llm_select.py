@@ -12,8 +12,8 @@ def _safe_int(v):
     if isinstance(v, (int, float)):
         return int(v)
     if isinstance(v, Decimal):
-        return int(v)  # ตัดเศษทิ้ง
-    # ดึงเฉพาะตัวเลขจากสตริง เช่น "519,000 ฿"
+        return int(v)  # strip fraction
+    # extract only digits from strings, e.g., "519,000 THB"
     m = re.findall(r"\d+", str(v))
     return int("".join(m)) if m else None
 
@@ -37,7 +37,7 @@ def _serialize_car(c):
     }
 
 def _fallback_pick(cars: List, max_budget: Optional[int], exclude_ids: List[int]) -> Tuple[Optional[object], str]:
-    # เลือกคันที่ถูกที่สุดภายใต้งบและไม่อยู่ใน exclude; ถ้าไม่มี ให้เลือกคันแรก
+    # Choose the cheapest within budget and not in exclude; if none, choose the first viable one.
     candidates = []
     for c in cars:
         if exclude_ids and c.id in exclude_ids:
@@ -47,7 +47,7 @@ def _fallback_pick(cars: List, max_budget: Optional[int], exclude_ids: List[int]
             continue
         candidates.append((p if p is not None else 10**15, c))
     if not candidates:
-        # อนุญาตเกินงบ หากไม่มีจริงๆ
+        # Allow over-budget if nothing fits
         for c in cars:
             if exclude_ids and c.id in exclude_ids:
                 continue
@@ -57,8 +57,8 @@ def _fallback_pick(cars: List, max_budget: Optional[int], exclude_ids: List[int]
         return None, ""
     candidates.sort(key=lambda x: x[0])
     best = candidates[0][1]
-    ptxt = f"{_safe_int(best.price_thb):,} ฿" if _safe_int(best.price_thb) is not None else "ไม่ระบุ"
-    return best, f"เลือกคันราคาดีที่สุดภายใต้งบประมาณ: {ptxt}"
+    ptxt = f"{_safe_int(best.price_thb):,} THB" if _safe_int(best.price_thb) is not None else "N/A"
+    return best, f"Picked the best-priced car within budget: {ptxt}"
 
 def pick_best_car_with_gemini(
     cars: List,
@@ -67,42 +67,42 @@ def pick_best_car_with_gemini(
     fallback_first: bool = True
 ) -> Tuple[Optional[object], str]:
     """
-    คืน (car_obj, reason_th)
-    - ใช้ Google GenAI SDK (google-genai)
-    - ถ้า API ใช้ไม่ได้/ผิดพลาด จะ fallback เป็นกติกา deterministic
+    Return (car_obj, reason_en)
+    - Uses Google GenAI SDK (google-genai).
+    - If API is unavailable/errors, falls back to a deterministic rule.
     """
     session_params = session_params or {}
     exclude_ids = exclude_ids or []
 
-    # เตรียม payload ให้โมเดล
+    # Prepare payload for the model
     cars_payload = [_serialize_car(c) for c in cars if not (exclude_ids and c.id in exclude_ids)]
     max_budget = _safe_int(session_params.get("max_budget"))
 
-    # set ของรถที่ "อยู่ในงบ" เพื่อใช้ตรวจภายหลัง
+    # IDs of cars within budget (for post-check)
     in_budget_ids = {
         cp["id"]
         for cp in cars_payload
         if (max_budget is None or (cp["price_thb"] is not None and cp["price_thb"] <= max_budget))
     }
 
-    # ถ้าไม่มี API key ก็ fallback ไปเลย
+    # If no API key, fallback immediately
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         return _fallback_pick(cars, max_budget, exclude_ids)
 
     try:
-        # ========== ใช้ SDK ใหม่ ==========
+        # ========== New SDK ==========
         # pip install -U google-genai
         from google import genai
         from google.genai import types  # GenerateContentConfig / schema
 
-        # จะอ่าน GEMINI_API_KEY จาก env อัตโนมัติ
+        # Reads GEMINI_API_KEY from env automatically
         client = genai.Client()
 
-        # เปิด JSON mode เพื่อบังคับให้ตอบเป็น JSON
+        # Force JSON output
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            # หากต้องการล็อกโครงสร้าง JSON ให้แน่นอนยิ่งขึ้น เปิดคอมเมนต์ข้างล่างได้
+            # Optionally lock schema:
             # response_schema={
             #     "type": "object",
             #     "properties": {
@@ -114,27 +114,27 @@ def pick_best_car_with_gemini(
         )
 
         prompt = f"""
-คุณเป็นผู้ช่วยเลือก "รถมือสองที่เหมาะสมที่สุด" สำหรับผู้ใช้คนหนึ่ง
-โจทย์:
-- ผู้ใช้มีงบประมาณสูงสุด (ไม่เกิน): {max_budget if max_budget is not None else "ไม่ระบุ"}
-- ตัวเลือกเป็นรายการ JSON ในตัวแปร cars_list ด้านล่าง
-- ถ้ามีรถในงบ ให้พิจารณาเฉพาะรถที่ราคาไม่เกินงบก่อน แต่ถ้าไม่มีเลย ให้พิจารณาทุกคัน
+You are an assistant that selects **one** "best-fit used car" for a user.
+Constraints:
+- User's maximum budget (no more than): {max_budget if max_budget is not None else "N/A"}
+- Candidates are provided as a JSON array in `cars_list` below.
+- If there are cars within budget, consider only those first; otherwise consider all.
 
-เกณฑ์:
-1) ความคุ้มค่า/ราคา
-2) ความเหมาะกับการใช้งาน (อ้างอิง session_params หากมี)
-3) ไมล์น้อยเป็นบวก
-4) ปีใหม่เป็นบวก
+Criteria:
+1) Value for money
+2) Suitability to usage (refer to session_params if provided)
+3) Lower mileage is better
+4) Newer year is better
 
-ข้อกำหนดตัวเลข:
-- ใช้เฉพาะตัวเลขจาก JSON เท่านั้น
-- เงินเป็นบาทไทย ฟอร์แมต ###,### ฿
-- ถ้าไม่มีตัวเลข ให้ใช้คำว่า "ไม่ระบุ"
+Numeric rules:
+- Use only numbers that exist in the JSON
+- Money is Thai Baht, format as ###,### THB
+- If a number is missing, say "N/A"
 
-ให้ตอบกลับเป็น JSON เท่านั้น:
+Reply **JSON only**:
 {{
   "car_id": <id>,
-  "reason": "<เหตุผลภาษาไทย 80–180 คำ อ้างตัวเลขจริงเท่านั้น>"
+  "reason": "<English explanation, 80–180 words, cite only real numbers>"
 }}
 
 session_params:
@@ -144,7 +144,6 @@ cars_list:
 {json.dumps(cars_payload, ensure_ascii=False)}
         """.strip()
 
-        # เรียกด้วยรูปแบบใหม่
         resp = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -153,12 +152,11 @@ cars_list:
 
         txt = (resp.text or "").strip()
 
-        # พยายาม parse JSON (เพราะเราเปิด JSON mode ไว้)
+        # Try to parse JSON
         j = None
         try:
             j = json.loads(txt)
         except Exception:
-            # กันกรณีห่อโค้ดบล็อก
             m = re.search(r"\{[\s\S]+\}", txt)
             if m:
                 try:
@@ -167,35 +165,35 @@ cars_list:
                     j = None
 
         if not isinstance(j, dict) or "car_id" not in j:
-            # ผิดฟอร์แมต → fallback
+            # Bad format → fallback
             return _fallback_pick(cars, max_budget, exclude_ids)
 
         cid = _safe_int(j.get("car_id"))
         reason = str(j.get("reason") or "").strip()
 
-        # map กลับไปเป็น object จริง
+        # Map back to object
         selected = None
         for c in cars:
             if c.id == cid and c.id not in exclude_ids:
-                selected = c
+                selected = c;
                 break
 
-        # ถ้าโมเดลเลือกคันเกินงบ ทั้งที่มีคันในงบ → แก้ให้
+        # If model picked over-budget while in-budget options exist → correct it
         if selected:
             price = _safe_int(getattr(selected, "price_thb", None))
             if max_budget is not None and in_budget_ids and selected.id not in in_budget_ids:
                 fb, fb_reason = _fallback_pick(cars, max_budget, exclude_ids)
                 if fb:
                     return fb, (reason or fb_reason)
-            # ทำความสะอาดตัวเลขใน reason ให้เป็นรูป ###,### ฿ สำหรับราคาที่เลือกได้
+            # Normalize price formatting inside reason
             if price is not None:
                 reason = reason.replace(str(price), f"{price:,}")
         else:
             return _fallback_pick(cars, max_budget, exclude_ids)
 
-        return selected, reason or "เหตุผล: เลือกจากเกณฑ์ความคุ้มค่าภายใต้งบประมาณ"
+        return selected, reason or "Reason: selected based on value within budget."
 
     except Exception as e:
-        # ไม่ให้ระบบล่ม: log แล้ว fallback
+        # Do not crash: log and fallback
         print("pick_best_car_with_gemini error:", e)
         return _fallback_pick(cars, max_budget, exclude_ids)

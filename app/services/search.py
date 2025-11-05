@@ -3,7 +3,7 @@ from app.models import CarCache
 
 def pick_cars(db, filters: dict | None, limit: int = 12):
     """
-    เลือกรถจาก CarCache แบบง่าย ๆ: กรองตามงบ/ยี่ห้อ/ปี แล้ว random
+    Pick cars from CarCache in a simple way: filter by budget/brand/year then randomize.
     """
     stmt = select(CarCache)
     if filters:
