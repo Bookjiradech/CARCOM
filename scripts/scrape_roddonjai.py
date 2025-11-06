@@ -258,11 +258,19 @@ def parse_detail(driver, url: str, debug_fuel: bool=False) -> Dict:
         "ประเภท": car_type or "",
         "สี": color or "",
         "น้ำมัน": fuel_type or "",
-        "เชื้อเพลิง": fuel_type or "",  # เผื่อที่อื่นอ้างชื่อคีย์นี้
+        "เชื้อเพลิง": fuel_type or "",
         # สำหรับ export แบบ "min fields"
         "ชื่อรถ": title, "ลิงก์": url, "ลิงก์รูปภาพ": image_url or "",
         "ราคา": price_clean or price_txt or "", "เลขไมล์": f"{mileage_km:,}" if mileage_km else "",
         "จังหวัด": province or "",
+
+        # ===== normalized keys =====
+        "seller": (seller or "").strip(),
+        "location": (province or "").strip(),
+        "gear": (transmission or "").strip(),
+        "fuel": (fuel_type or "").strip(),
+        "color": (color or "").strip(),
+        "body_type": (car_type or "").strip(),
     }
 
     return {
@@ -350,10 +358,10 @@ def build_min_fields(data: Dict) -> Dict[str, str]:
             if isinstance(specs, dict) and specs.get(k): return specs.get(k)
         return ""
 
-    car_type = pick(["ประเภทรถ", "ประเภท"])
-    color    = pick(["สี", "สีภายนอก", "สีตัวถัง", "Exterior Color", "สีรถ"])
-    gear     = pick(["เกียร์", "ระบบเกียร์", "ประเภทเกียร์", "Transmission"])
-    fuel     = pick(["น้ำมัน", "เชื้อเพลิง", "ประเภทเชื้อเพลิง", "ชนิดเชื้อเพลิง", "ประเภทพลังงาน", "ประเภทเครื่องยนต์"])
+    car_type = ex.get("body_type") or pick(["ประเภทรถ", "ประเภท"])
+    color    = ex.get("color") or pick(["สี", "สีภายนอก", "สีตัวถัง", "Exterior Color", "สีรถ"])
+    gear     = ex.get("gear") or pick(["เกียร์", "ระบบเกียร์", "ประเภทเกียร์", "Transmission"])
+    fuel     = ex.get("fuel") or pick(["น้ำมัน", "เชื้อเพลิง", "ประเภทเชื้อเพลิง", "ชนิดเชื้อเพลิง", "ประเภทพลังงาน", "ประเภทเครื่องยนต์"])
 
     return {
         "ชื่อรถ": title or "—",

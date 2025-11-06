@@ -202,6 +202,20 @@ def parse_detail_page(driver) -> Dict:
         data["เชื้อเพลิง"] = fuel_val               # *** คีย์ที่เทมเพลตอ่าน ***
         data["fuel_type_normalized"] = str(fuel_val).strip().lower()
 
+    # ===== normalized keys =====
+    data["seller"]    = (data.get("ผู้ขาย") or "").strip()
+    data["location"]  = (data.get("จังหวัด") or data.get("ที่อยู่") or data.get("ตำแหน่ง") or "").strip()
+    data["gear"]      = (data.get("เกียร์") or data.get("ระบบเกียร์") or "").strip()
+    data["fuel"]      = (data.get("เชื้อเพลิง") or data.get("ประเภทเชื้อเพลิง") or "").strip()
+    data["color"]     = (data.get("สี") or "").strip()
+    data["body_type"] = (
+        data.get("ประเภทรถ") or
+        data.get("ประเภทตัวถัง") or
+        (data.get("สเปกย่อย") or {}).get("ประเภทรถ") if isinstance(data.get("สเปกย่อย"), dict) else ""
+    )
+    if isinstance(data.get("body_type"), dict):
+        data["body_type"] = ""
+
     return data
 
 def upsert_car(db, data: Dict) -> bool:
