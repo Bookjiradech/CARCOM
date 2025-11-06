@@ -1,136 +1,132 @@
 # app/services/translator.py
-from __future__ import annotations
-import os, json, re, hashlib, threading
-from typing import Dict, Any, Iterable, Optional
+# -*- coding: utf-8 -*-
+import os, json, re
+from datetime import datetime
+from threading import RLock
 
-# ---------- simple file cache ----------
-_CACHE_PATH = os.path.join(os.getcwd(), "tmp_translate_cache.json")
-_LOCK = threading.Lock()
-_try_load = {}
-if os.path.exists(_CACHE_PATH):
-    try:
-        with open(_CACHE_PATH, "r", encoding="utf-8") as f:
-            _try_load = json.load(f)
-    except Exception:
-        _try_load = {}
-_CACHE: Dict[str, str] = dict(_try_load)
+# path ไฟล์แคช (เปลี่ยนได้ผ่าน env)
+CACHE_PATH = os.getenv("TRANSLATE_CACHE_PATH", os.path.join("data", "translate_cache.json"))
 
-def _keyhash(text: str, src: str, tgt: str, backend: str) -> str:
-    h = hashlib.sha256(f"{backend}|{src}->{tgt}|{text}".encode("utf-8")).hexdigest()
-    return h
+_lock = RLock()
+_cache = None  # lazy load
 
-def _cache_get(text: str, src: str, tgt: str, backend: str) -> Optional[str]:
-    return _CACHE.get(_keyhash(text, src, tgt, backend))
-
-def _cache_put(text: str, src: str, tgt: str, backend: str, out: str):
-    with _LOCK:
-        _CACHE[_keyhash(text, src, tgt, backend)] = out
-        try:
-            os.makedirs(os.path.dirname(_CACHE_PATH), exist_ok=True)
-            with open(_CACHE_PATH, "w", encoding="utf-8") as f:
-                json.dump(_CACHE, f, ensure_ascii=False)
-        except Exception:
-            pass
-
-# ---------- backends ----------
-def _translate_gemini(texts: Iterable[str], source="th", target="en") -> list[str]:
-    # ใช้ Gemini (คุณมี GEMINI_API_KEY อยู่แล้ว)
-    from google import genai
-    client = genai.Client()  # ใช้ env GEMINI_API_KEY อัตโนมัติ
-    # แปลทีละก้อน (รวบ batch เพื่อลดค่าใช้จ่าย/latency)
-    out = []
-    for t in texts:
-        if not t or re.fullmatch(r"\s*", t): 
-            out.append(t); continue
-        # cache
-        c = _cache_get(t, source, target, "gemini")
-        if c is not None:
-            out.append(c); continue
-        prompt = f"Translate into {target.upper()} only, no extra words:\n{t}"
-        resp = client.models.generate_content(model="gemini-2.0-flash-lite", contents=prompt)
-        txt = (resp.text or "").strip()
-        _cache_put(t, source, target, "gemini", txt)
-        out.append(txt)
-    return out
-
-def _translate_gcloud(texts: Iterable[str], source="th", target="en") -> list[str]:
-    # ต้องตั้ง GOOGLE_APPLICATION_CREDENTIALS ล่วงหน้า
-    from google.cloud import translate_v2 as translate
-    client = translate.Client()
-    outs = client.translate(list(texts), source_language=source, target_language=target, format_="text")
-    res = []
-    for i, t in enumerate(texts):
-        if not t or re.fullmatch(r"\s*", t):
-            res.append(t); continue
-        tr = outs[i]["translatedText"]
-        _cache_put(t, source, target, "gcloud", tr)
-        res.append(tr)
-    return res
-
-# ---------- public API ----------
-def translate_texts(texts: list[str], backend="gemini", source="th", target="en") -> list[str]:
-    if backend == "gcloud":
-        return _translate_gcloud(texts, source, target)
-    return _translate_gemini(texts, source, target)
-
-# คีย์ที่ “ควรแปลค่า” หากเป็นสตริงภาษาไทยจากหลายเว็บ
-VALUE_FIELDS_TO_TRANSLATE = {
-    "title","seller","province","location","color","body_type",
-    # free-form in extra:
-    "รุ่นย่อย","สเปก","หมายเหตุ","รายละเอียด","ที่ตั้งรถ","ประเภทรถ","สี","เชื้อเพลิง","เกียร์",
-}
-
-# แผนที่คีย์ไทย -> คีย์อังกฤษ (รวมจากทุกเว็บเท่าที่ใช้ร่วม)
 KEY_MAP = {
-    "ราคา":"price", "ผู้ขาย":"seller", "รูปภาพ":"image_url", "ชื่อประกาศ":"title",
-    "ยี่ห้อ":"brand","รุ่น":"model","รุ่นย่อย":"trim","ปีรถ":"year","ปี":"year",
-    "เลขไมล์":"mileage_km","เลขไมล์(กม.)":"mileage_km", "เชื้อเพลิง":"fuel",
-    "ประเภทเชื้อเพลิง":"fuel","เกียร์":"transmission","ประเภทรถ":"body_type",
-    "ประเภทย่อย":"body_type","สี":"color","ที่อยู่":"location","ตำแหน่ง":"location",
-    "จังหวัด":"province","ลิงก์":"url","URL":"url"
+    "ชื่อประกาศ": "title",
+    "ยี่ห้อ": "brand",
+    "รุ่น": "model",
+    "รุ่นย่อย": "submodel",
+    "ปีรถ": "year",
+    "ปี": "year",
+    "ราคา": "price",
+    "เลขไมล์": "mileage_km",
+    "เชื้อเพลิง": "fuel",
+    "ประเภทเชื้อเพลิง": "fuel",
+    "เกียร์": "gear",
+    "ประเภทรถ": "body_type",
+    "สี": "color",
+    "จังหวัด": "province",
+    "ที่อยู่": "province",
+    "ตำแหน่ง": "province",
+    "รูปภาพ": "image_url",
+    "ลิงก์": "url",
 }
 
-def normalize_keys_th_en(d: Dict[str, Any]) -> Dict[str, Any]:
-    """รวมคีย์ไทยให้เป็นอังกฤษเท่าที่รู้จัก (คงคีย์ที่ไม่รู้จักไว้)"""
-    out = {}
-    for k, v in (d or {}).items():
-        out[KEY_MAP.get(k, k)] = v
+EN_FIELDS = ["title","brand","model","submodel","province","color","fuel","gear","body_type"]
+
+def _ensure_cache_loaded():
+    global _cache
+    if _cache is not None:
+        return
+    with _lock:
+        if _cache is not None:
+            return
+        os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+        if os.path.exists(CACHE_PATH):
+            try:
+                with open(CACHE_PATH, "r", encoding="utf-8") as f:
+                    _cache = json.load(f)
+            except Exception:
+                _cache = {}
+        else:
+            _cache = {}
+
+def _save_cache():
+    with _lock:
+        try:
+            with open(CACHE_PATH, "w", encoding="utf-8") as f:
+                json.dump(_cache, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass  # ไม่ให้ล่มเพราะแคช
+
+def normalize_keys_th_en(d: dict) -> dict:
+    d = dict(d or {})
+    raw = dict(d)
+    norm = {}
+    for k, v in raw.items():
+        en_key = KEY_MAP.get(k, k)
+        norm[en_key] = v
+    d["_raw"] = raw
+    d["_norm"] = norm
+    return d
+
+def _is_numberish(t: str) -> bool:
+    return bool(re.fullmatch(r"[0-9,.\s]+(?:฿|บาท)?", t or ""))
+
+def translate_text_th_en(text: str) -> str:
+    """
+    แปลไทย->อังกฤษ ด้วยไฟล์แคชก่อน ถ้าไม่เจอค่อยเรียก Gemini
+    (ตั้ง env GEMINI_API_KEY ไว้แล้ว)
+    """
+    t = (text or "").strip()
+    if not t or _is_numberish(t):
+        return t
+
+    _ensure_cache_loaded()
+    with _lock:
+        if t in _cache:
+            return _cache[t]
+
+    # --- เรียกโมเดล (เปลี่ยนเป็น Google Cloud Translate ก็ได้) ---
+    from google import genai
+    client = genai.Client()  # ใช้ GEMINI_API_KEY จาก env
+    prompt = f"Translate to natural English for used-car listing context. Text: {t}"
+    try:
+        resp = client.models.generate_content(model="gemini-2.0-flash-lite", contents=prompt)
+        out = (resp.text or t).strip()
+    except Exception:
+        out = t  # เซฟโหมด: ถ้าแปลไม่ได้ ให้คืนคำเดิม
+
+    with _lock:
+        _cache[t] = out
+        _save_cache()
     return out
 
-def translate_record_values(d: Dict[str, Any], backend="gemini") -> Dict[str, Any]:
+def enrich_with_en_values(d: dict) -> dict:
     """
-    แปลเฉพาะ 'ค่า' ที่เป็นสตริง (ไทย->อังกฤษ) ทั้งในคีย์หลักและใน extra อื่น ๆ
-    เก็บผลภาษาอังกฤษซ้อนใน _en เพื่ออ้างต่อได้
+    เติม _en เฉพาะฟิลด์สำคัญจาก _norm/_raw โดยใช้ file-cache
     """
-    if not d: 
-        return d
-    # เตรียมรายการข้อความที่จะส่งแปล
-    items_to_translate: list[tuple[list, str]] = []  # (pointer_chain, original_text)
-    def walk(prefix: list, obj: Any):
-        if isinstance(obj, dict):
-            for kk, vv in obj.items():
-                walk(prefix+[kk], vv)
-        elif isinstance(obj, list):
-            for i, vv in enumerate(obj):
-                walk(prefix+[i], vv)
-        elif isinstance(obj, str):
-            keyname = str(prefix[-1]) if prefix else ""
-            if keyname in VALUE_FIELDS_TO_TRANSLATE or re.search(r"[ก-๙]", obj):
-                items_to_translate.append((prefix, obj))
-    walk([], d)
+    d = dict(d or {})
+    norm = d.get("_norm") or {}
+    en = dict(d.get("_en") or {})
 
-    texts = [t for _, t in items_to_translate]
-    if texts:
-        translated = translate_texts(texts, backend=backend, source="th", target="en")
-        # ใส่ผลลงไปใน d["_en"] แบบโครงสร้างเดียวกัน
-        def set_in(out: dict, chain: list, value: Any):
-            cur = out
-            for c in chain[:-1]:
-                cur = cur.setdefault(c, {} if isinstance(c, str) else {})
-            cur[chain[-1]] = value
-        en_out: dict = {}
-        for (chain, _orig), tr in zip(items_to_translate, translated):
-            set_in(en_out, chain, tr)
-        d = dict(d)  # copy
-        d["_en"] = en_out
+    for k in EN_FIELDS:
+        src = en.get(k) or norm.get(k) or d.get(k)
+        if isinstance(src, str) and src.strip():
+            en[k] = translate_text_th_en(src)
+
+    d["_en"] = en
+    # บันทึก timestamp ไว้หน่อย เผื่อดีบัก
+    meta = d.get("_meta") or {}
+    meta["translated_at"] = datetime.utcnow().isoformat() + "Z"
+    d["_meta"] = meta
     return d
+
+def prefer_en(d: dict, key: str, *fallback_keys: str):
+    en = ((d.get("_en") or {}).get(key))
+    if isinstance(en, str) and en.strip():
+        return en.strip()
+    for k in (key, *fallback_keys):
+        v = (d.get("_norm") or {}).get(k) or d.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return None

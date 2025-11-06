@@ -174,7 +174,7 @@ def account():
         )
         total_credits = int(db.execute(credits_stmt).scalar() or 0)
 
-        # remaining days: max end_at among active packages
+        # remaining time: max end_at among active packages
         ups = db.execute(_active_userpackages_q(db, current_user.id)).scalars().all()
         max_end = None
         for up in ups:
@@ -183,10 +183,18 @@ def account():
                     max_end = up.end_at
 
         remaining_days = None
+        remaining_seconds = None
         if max_end:
-            now = datetime.utcnow().replace(tzinfo=None)
-            end_naive = max_end.replace(tzinfo=None)
-            delta = end_naive - now
+            # ใช้เวลาแบบ timezone-aware ทั้งคู่ (ถือว่า end_at เป็น UTC ถ้าเป็น naive)
+            now_utc = datetime.now(timezone.utc)
+            end_at = max_end if max_end.tzinfo else max_end.replace(tzinfo=timezone.utc)
+
+            delta = end_at - now_utc
+            total_secs = int(delta.total_seconds())
+            if total_secs < 0:
+                total_secs = 0
+
+            remaining_seconds = total_secs
             remaining_days = max(0, delta.days)
 
         # user's payment history
@@ -199,7 +207,8 @@ def account():
         return render_template(
             "auth/account.html",
             total_credits=total_credits,
-            remaining_days=remaining_days,
+            remaining_days=remaining_days,         # คงไว้เพื่อ compatibility เดิม
+            remaining_seconds=remaining_seconds,   # >>> คีย์ใหม่สำหรับเคาน์ต์ดาวน์
             payments=payments,
         )
     finally:

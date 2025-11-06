@@ -7,7 +7,6 @@
     <p class="text-sm text-gray-600">Manage account information and security settings</p>
   </div>
 
-
   <div class="grid md:grid-cols-3 gap-6">
     <div class="bg-white rounded-2xl shadow-sm border p-6">
       <div class="text-sm text-gray-500 mb-1">Username</div>
@@ -32,26 +31,22 @@
       <div class="text-xs text-gray-500 mt-1">credits</div>
     </div>
 
+    <!-- การ์ดเวลาแพ็กเกจ: เปลี่ยนเป็นเคาน์ต์ดาวน์ -->
     <div class="bg-white rounded-2xl shadow-sm border p-6">
-      <div class="text-sm text-gray-500 mb-1">Package Days Remaining</div>
-      <div class="text-3xl font-bold text-green-600">
-        {% if remaining_days is not none %}
-          {{ remaining_days }}
-        {% else %}
-          ∞
-        {% endif %}
-      </div>
-      <div class="text-xs text-gray-500 mt-1">
-        {% if remaining_days is not none %}
-          days
-        {% else %}
-          Unlimited
-        {% endif %}
-      </div>
+      <div class="text-sm text-gray-500 mb-1">Package Time Remaining</div>
+      {% if remaining_seconds is not none %}
+        <div class="text-3xl font-bold text-green-600">
+          <span id="pkg-countdown"
+                data-remaining-seconds="{{ remaining_seconds|int }}">--</span>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">days : hours : minutes : seconds</div>
+      {% else %}
+        <div class="text-3xl font-bold text-green-600">∞</div>
+        <div class="text-xs text-gray-500 mt-1">Unlimited</div>
+      {% endif %}
     </div>
   </div>
 
- 
   <div class="space-y-6">
     <!-- Reset Password -->
     <details class="bg-white rounded-2xl shadow-sm border overflow-hidden">
@@ -66,33 +61,23 @@
       <div class="border-t border-gray-100 p-6">
         <form method="post" action="{{ url_for('auth.account_reset_password') }}" class="space-y-4">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          
           <div class="grid md:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-              <input type="password" 
-                     name="old_password" 
-                     class="h-10 w-full rounded-lg  border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                     required>
+              <input type="password" name="old_password"
+                     class="h-10 w-full rounded-lg  border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" required>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-              <input type="password" 
-                     name="new_password" 
-                     class="h-10 w-full rounded-lg  border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                     minlength="8" 
-                     required>
+              <input type="password" name="new_password"
+                     class="h-10 w-full rounded-lg  border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" minlength="8" required>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-              <input type="password" 
-                     name="confirm" 
-                     class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                     minlength="8" 
-                     required>
+              <input type="password" name="confirm"
+                     class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" minlength="8" required>
             </div>
           </div>
-          
           <div class="pt-2">
             <button class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors">
               Save
@@ -122,14 +107,13 @@
             "What is your favorite food?",
             "What was your childhood nickname?"
           ] %}
-          
+
           <div class="grid md:grid-cols-2 gap-6">
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Security Question 1</label>
-                <select name="question1" 
-                        class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                        required>
+                <select name="question1"
+                        class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" required>
                   <option value="">-- Select a question --</option>
                   {% for q in qlist %}
                     <option value="{{ q }}">{{ q }}</option>
@@ -138,18 +122,16 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Answer 1</label>
-                <input name="answer1" 
-                       class="h-10 w-full rounded-lg  border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                       required>
+                <input name="answer1"
+                       class="h-10 w-full rounded-lg  border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" required>
               </div>
             </div>
-            
+
             <div class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Security Question 2</label>
-                <select name="question2" 
-                        class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                        required>
+                <select name="question2"
+                        class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" required>
                   <option value="">-- Select a question --</option>
                   {% for q in qlist %}
                     <option value="{{ q }}">{{ q }}</option>
@@ -158,13 +140,12 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Answer 2</label>
-                <input name="answer2" 
-                       class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" 
-                       required> 
+                <input name="answer2"
+                       class="h-10 w-full rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 focus:ring-opacity-20 transition-colors" required>
               </div>
             </div>
           </div>
-          
+
           <div class="pt-2">
             <button class="inline-flex items-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600 transition-colors">
               Save
@@ -175,12 +156,11 @@
     </details>
   </div>
 
-
   <div class="bg-white rounded-2xl shadow-sm border">
     <div class="px-6 py-4 border  border-b border-gray-100">
       <h2 class="text-xl font-semibold text-gray-900">Payment History</h2>
     </div>
-    
+
     {% if payments and payments|length > 0 %}
       <div class="overflow-x-auto">
         <table class="min-w-full">
@@ -231,4 +211,40 @@
     {% endif %}
   </div>
 </div>
+
+<!-- สคริปต์เคาน์ต์ดาวน์ -->
+<script>
+(function () {
+  const el = document.getElementById('pkg-countdown');
+  if (!el) return;
+
+  let seconds = parseInt(el.dataset.remainingSeconds || "0", 10);
+  if (isNaN(seconds) || seconds < 0) seconds = 0;
+
+  function fmt(n) { return n.toString().padStart(2, '0'); }
+
+  function render(sec) {
+    const days = Math.floor(sec / 86400);
+    sec %= 86400;
+    const hours = Math.floor(sec / 3600);
+    sec %= 3600;
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    el.textContent = `${days}d ${fmt(hours)}h ${fmt(mins)}m ${fmt(secs)}s`;
+  }
+
+  render(seconds);
+
+  const timer = setInterval(() => {
+    if (seconds <= 0) {
+      render(0);
+      clearInterval(timer);
+      return;
+    }
+    seconds -= 1;
+    render(seconds);
+  }, 1000);
+})();
+</script>
+
 {% endblock %}
