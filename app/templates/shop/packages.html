@@ -1,3 +1,4 @@
+{# C:\File\CARCOM\backend\app\templates\shop\packages.html #}
 {% extends "layout.html" %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8">
@@ -11,17 +12,39 @@
       <div class="text-gray-600">No packages available</div>
     </div>
   {% else %}
+    {# ✅ จัดลำดับตามราคา ให้ FREE (0 บาท) ขึ้นก่อน #}
     <div class="grid md:grid-cols-3 gap-6">
-      {% for pkg in packages %}
-        {# ✅ values from backend #}
+      {% for pkg in packages|sort(attribute='price_thb') %}
         {% set base = pkg._base %}
         {% set eff = pkg._eff %}
         {% set promo_active = pkg._promo_active %}
         {% set is_trial_pkg = (base == 0.0) %}
 
-        <div class="bg-white rounded-2xl shadow-sm border p-6 flex flex-col">
+        {# ✅ สไตล์สำหรับ FREE ให้เด่นกว่าปกติ #}
+        <div
+          class="
+            relative flex flex-col p-6 rounded-2xl border shadow-sm
+            {% if is_trial_pkg %}
+              bg-gradient-to-br from-blue-50 to-white border-blue-400 ring-2 ring-blue-200 shadow-blue-200
+              scale-[1.02]
+            {% else %}
+              bg-white border-gray-200 hover:shadow-md transition
+            {% endif %}
+          "
+        >
+          {# ✅ ริบบอนเฉพาะ FREE #}
+          {% if is_trial_pkg %}
+            <div class="absolute -top-3 -right-3 rotate-12 select-none">
+              <span class="inline-block bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded">
+                Free Trial
+              </span>
+            </div>
+          {% endif %}
+
           <div class="flex items-start justify-between gap-2">
-            <div class="text-xl font-semibold text-gray-900">{{ pkg.name }}</div>
+            <div class="text-xl font-semibold {% if is_trial_pkg %}text-blue-900{% else %}text-gray-900{% endif %}">
+              {{ pkg.name }}
+            </div>
             {% if pkg.status != 'active' %}
               <span class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-700">Status: {{ pkg.status }}</span>
             {% endif %}
@@ -41,10 +64,14 @@
           <div class="mt-4">
             {% if promo_active and eff < base %}
               <div class="text-sm text-gray-500 line-through">{{ "{:,.2f}".format(base) }} ฿</div>
-              <div class="text-2xl font-bold text-green-600">{{ "{:,.2f}".format(eff) }} ฿</div>
+              <div class="text-2xl font-bold {% if is_trial_pkg %}text-blue-700{% else %}text-green-600{% endif %}">
+                {{ "{:,.2f}".format(eff) }} ฿
+              </div>
               <div class="text-xs text-gray-500">Price <b>includes 7% VAT</b> (no extra charge)</div>
             {% else %}
-              <div class="text-2xl font-bold text-gray-900">{{ "{:,.2f}".format(base) }} ฿</div>
+              <div class="text-2xl font-bold {% if is_trial_pkg %}text-blue-700{% else %}text-gray-900{% endif %}">
+                {{ "{:,.2f}".format(base) }} ฿
+              </div>
               <div class="text-xs text-gray-500">Price <b>includes 7% VAT</b> (no extra charge)</div>
             {% endif %}
           </div>
@@ -52,7 +79,7 @@
           <div class="mt-4 space-y-2 text-sm text-gray-600">
             <div class="flex justify-between">
               <span>Credits:</span>
-              <span class="font-medium">{{ pkg.credits or 0 }}</span>
+              <span class="font-medium {% if is_trial_pkg %}text-blue-800{% endif %}">{{ pkg.credits or 0 }}</span>
             </div>
             <div class="flex justify-between">
               <span>Duration:</span>
@@ -64,6 +91,11 @@
                 {% endif %}
               </span>
             </div>
+            {% if is_trial_pkg %}
+              <div class="pt-2 text-xs text-blue-700 font-medium">
+                Perfect for first-time users — try all core features now.
+              </div>
+            {% endif %}
           </div>
 
           <div class="mt-6 pt-4 border-t">
@@ -75,7 +107,10 @@
               {% else %}
                 <form method="post" action="{{ url_for('shop.activate_free', pkg_id=pkg.id) }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 ring-blue-600">
+                  <button
+                    class="w-full inline-flex items-center justify-center rounded-lg px-4 py-2 font-semibold
+                           bg-green-600 text-white hover:bg-green-700 focus-visible:ring-2 ring-green-600
+                           {% if is_trial_pkg %}animate-[pulse_2s_ease-in-out_infinite]{% endif %}">
                     Get free trial
                   </button>
                 </form>

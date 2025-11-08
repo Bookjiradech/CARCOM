@@ -3,12 +3,13 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from passlib.hash import bcrypt
 from sqlalchemy import select, func, or_, desc
 
 from app.db import SessionLocal
 from app.models import User, SecurityAnswer, UserPackage, Payment
-from passlib.hash import bcrypt
+
+# ใช้ bcrypt_sha256 เป็นหลัก (ไม่มีลิมิต 72 ไบต์) และเตรียม fallback ไป bcrypt เดิม
+from passlib.hash import bcrypt_sha256, bcrypt as bcrypt_raw
 
 bp = Blueprint("auth", __name__, template_folder="../templates/auth")
 
@@ -28,6 +29,34 @@ def _active_userpackages_q(db, user_id: int):
         )
         .order_by(UserPackage.id)
     )
+
+
+# ----- password & answer hashing helpers -----
+def hash_secret(plain: str) -> str:
+    """แฮชรหัสผ่าน/คำตอบ security ด้วย bcrypt_sha256 (ปลอดภัยและไม่มีลิมิต 72 ไบต์)"""
+    return bcrypt_sha256.hash(plain)
+
+
+def verify_secret(plain: str, hashed: str) -> bool:
+    """
+    ตรวจสอบรหัสผ่าน/คำตอบ security:
+    - พยายามด้วย bcrypt_sha256 ก่อน
+    - ถ้า hash เดิมเป็นรูปแบบ bcrypt ($2a$/$2b$/$2y$) ให้ fallback ไป bcrypt เดิม
+    """
+    try:
+        if bcrypt_sha256.verify(plain, hashed):
+            return True
+    except Exception:
+        pass
+
+    # fallback เฉพาะ hash เดิมที่เป็น bcrypt เพียว ๆ
+    if isinstance(hashed, str) and hashed.startswith(("$2a$", "$2b$", "$2y$")):
+        try:
+            return bcrypt_raw.verify(plain, hashed)
+        except Exception:
+            return False
+
+    return False
 
 
 # ---------- Register ----------
@@ -84,7 +113,7 @@ def register_post():
 
     db = SessionLocal()
     try:
-        user = User(username=username, password_hash=bcrypt.hash(password))
+        user = User(username=username, password_hash=hash_secret(password))
         db.add(user)
         db.flush()
 
@@ -92,8 +121,8 @@ def register_post():
             return (s or "").strip().lower()
 
         sas = [
-            SecurityAnswer(user_id=user.id, question=q1, answer_hash=bcrypt.hash(_norm(a1))),
-            SecurityAnswer(user_id=user.id, question=q2, answer_hash=bcrypt.hash(_norm(a2))),
+            SecurityAnswer(user_id=user.id, question=q1, answer_hash=hash_secret(_norm(a1))),
+            SecurityAnswer(user_id=user.id, question=q2, answer_hash=hash_secret(_norm(a2))),
         ]
         db.add_all(sas)
 
@@ -123,7 +152,7 @@ def login_post():
     db = SessionLocal()
     try:
         user = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
-        if not user or not bcrypt.verify(password, user.password_hash):
+        if not user or not verify_secret(password, user.password_hash):
             flash("Invalid username or password.", "error")
             return redirect(url_for("auth.login"))
 
@@ -233,11 +262,11 @@ def account_reset_password():
     db = SessionLocal()
     try:
         user = db.get(User, current_user.id)
-        if not user or not bcrypt.verify(old_password, user.password_hash):
+        if not user or not verify_secret(old_password, user.password_hash):
             flash("Current password is incorrect.", "error")
             return redirect(url_for("auth.account"))
 
-        user.password_hash = bcrypt.hash(new_password)
+        user.password_hash = hash_secret(new_password)
         db.add(user)
         db.commit()
         flash("Password changed successfully.", "success")
@@ -273,12 +302,12 @@ def account_reset_security():
         sa1 = SecurityAnswer(
             user_id=current_user.id,
             question=q1,
-            answer_hash=bcrypt.hash(normalize_answer(a1)),
+            answer_hash=hash_secret(normalize_answer(a1)),
         )
         sa2 = SecurityAnswer(
             user_id=current_user.id,
             question=q2,
-            answer_hash=bcrypt.hash(normalize_answer(a2)),
+            answer_hash=hash_secret(normalize_answer(a2)),
         )
         db.add_all([sa1, sa2])
         db.commit()
@@ -367,7 +396,7 @@ def forgot_verify_post():
         rows = db.execute(select(SecurityAnswer).where(SecurityAnswer.id.in_(qids))).scalars().all()
         ok = True
         for idx, row in enumerate(rows):
-            if idx >= len(answers) or not bcrypt.verify(answers[idx], row.answer_hash):
+            if idx >= len(answers) or not verify_secret(answers[idx], row.answer_hash):
                 ok = False
                 break
         if not ok:
@@ -412,7 +441,7 @@ def forgot_reset_post():
             flash("User not found.", "error")
             return redirect(url_for("auth.forgot"))
 
-        user.password_hash = bcrypt.hash(new_password)
+        user.password_hash = hash_secret(new_password)
         db.add(user)
         db.commit()
 
