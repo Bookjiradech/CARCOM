@@ -1,3 +1,4 @@
+# app/routes/shop.py
 # -*- coding: utf-8 -*-
 import os, sys, uuid, json, re
 from datetime import timedelta, datetime, date
@@ -107,6 +108,10 @@ def _run_scraper(source: str, q: str, min_price: int, max_price: int, limit: int
     if debug_dump:
         args.append("--debug-dump")
 
+    # เพิ่ม debug พิเศษให้ roddonjai
+    if source == "roddonjai":
+        args.append("--debug-fuel")
+
     print(f"DEBUG run {source} args: {args}")
 
     try:
@@ -116,6 +121,12 @@ def _run_scraper(source: str, q: str, min_price: int, max_price: int, limit: int
         stderr = (proc.stderr or "").strip()
         ok = proc.returncode == 0
         if not ok:
+            # log error ของ source นั้น ๆ ด้วย ถึงแม้ source อื่นจะ ok
+            print(f"[{source}] ERROR exit={proc.returncode}")
+            if stdout:
+                print(f"[{source}] STDOUT (error case):\n{stdout}")
+            if stderr:
+                print(f"[{source}] STDERR:\n{stderr}")
             return False, f"[{source}] exit={proc.returncode}\n{stdout}\n{stderr}"
         if stdout:
             print(f"[{source}] STDOUT:\n{stdout}")
@@ -123,6 +134,7 @@ def _run_scraper(source: str, q: str, min_price: int, max_price: int, limit: int
             print(f"[{source}] STDERR:\n{stderr}")
         return True, stdout[-2000:]
     except Exception as e:
+        print(f"[{source}] EXCEPTION in _run_scraper: {e}")
         return False, f"[{source}] exception: {e}"
 
 def _extract_year_from_text(x) -> Optional[int]:
@@ -347,6 +359,8 @@ def search_loading():
 @bp.post("/search/start")
 @login_required
 def search_start():
+    from collections import Counter
+
     q = (request.form.get("q") or "").strip()
 
     # ---- total items user wants to fetch (20/30/40/50) ----
@@ -395,14 +409,23 @@ def search_start():
             flash("Insufficient credits. Please purchase a package.", "error")
             return redirect(url_for("shop.list_packages"))
 
-        # include roddonjai by default as well
-        sources_cfg = current_app.config.get("SCRAPER_SOURCES", "kaidee,carsome,one2car,roddonjai")
+        # include roddonjai by default as well (no one2car)
+        sources_cfg = current_app.config.get("SCRAPER_SOURCES", "kaidee,carsome,roddonjai")
         sources = [s.strip() for s in sources_cfg.split(",") if s.strip()]
-        print("DEBUG SCRAPER_SOURCES =", sources, "Q =", q)
+
+        # บังคับตัด one2car ทิ้ง เผื่อมีใน config/.env
+        sources = [s for s in sources if s.lower() != "one2car"]
+
+        if not sources:
+            # เผื่อ config พลาด
+            sources = ["kaidee", "carsome", "roddonjai"]
+
+        print("DEBUG SCRAPER_SOURCES (final) =", sources, "Q =", q)
 
         # clear cache per source
         for s in sources:
-            _purge_cache_for_source(db, s)
+            purged = _purge_cache_for_source(db, s)
+            print(f"DEBUG purged {purged} rows for source={s}")
         db.commit()
 
         # spread target count across sources
@@ -441,14 +464,19 @@ def search_start():
             select(CarCache).where(and_(*conds)).order_by(CarCache.price_thb.asc()).limit(display_limit * 3)
         ).scalars().all()
 
+        rows_by_source = Counter((getattr(c, "source", None) or getattr(c, "source_site", None) or "NONE") for c in rows)
+        print("DEBUG rows_from_db=%d" % len(rows))
+        print("DEBUG rows_by_source:", rows_by_source)
+
         # ✅ apply year range with other filters
         cars = [
             c for c in rows
             if _match_extra_filters(c, car_type, fuel_type, gear_type, color, min_year, max_year)
         ]
 
-        print("DEBUG rows_from_db=%d" % len(rows))
+        cars_by_source = Counter((getattr(c, "source", None) or getattr(c, "source_site", None) or "NONE") for c in cars)
         print("DEBUG after_extra_filters=%d" % len(cars))
+        print("DEBUG cars_by_source:", cars_by_source)
 
         if not cars:
             flash("No results found for the given filters.", "info")
@@ -501,6 +529,8 @@ def search_start():
 @bp.get("/search/<int:session_id>")
 @login_required
 def search_view(session_id: int):
+    from collections import Counter
+
     sort = request.args.get("sort", "").strip()
 
     db = SessionLocal()
@@ -516,6 +546,9 @@ def search_view(session_id: int):
             .order_by(SearchSessionCar.rank)
         ).scalars().all()
         cars = [r.car for r in rows]
+        by_source = Counter((getattr(c, "source", None) or getattr(c, "source_site", None) or "NONE") for c in cars)
+        print("DEBUG search_view sources:", by_source)
+
         cars = _apply_sort(cars, sort)
         return render_template("shop/search_results.html", session=ss, cars=cars, sort=sort)
     finally:

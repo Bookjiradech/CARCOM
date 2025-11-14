@@ -45,12 +45,14 @@ def load_config(app):
 
     # Security Questions (เลือกได้จากดรอปดาวน์)
     app.config["SECURITY_QUESTIONS"] = [
-        "ชื่อสัตว์เลี้ยงตัวแรกของคุณคืออะไร?",
-        "โรงเรียนประถมของคุณชื่ออะไร?",
-        "บ้านเกิดของคุณอยู่จังหวัดอะไร?",
-        "อาหารจานโปรดของคุณคืออะไร?",
-        "ชื่อเล่นของคุณตอนเด็กคืออะไร?",
+        "What was the name of your first pet?",
+        "What was the name of your elementary school?",  # or "primary school"
+        "In which province were you born?",
+        "What is your favorite food?",
+        "What was your childhood nickname?",
     ]
+
+
     
     # Admins (รายชื่อผู้ใช้ที่เป็นผู้ดูแลระบบ)
     app.config["ADMIN_USERNAMES"] = [
