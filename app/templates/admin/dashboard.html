@@ -25,39 +25,51 @@
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow mb-8">
     <div class="flex items-center justify-between gap-4 mb-4">
       <h2 class="text-2xl font-semibold">Revenue</h2>
-      <form method="get" class="flex flex-wrap items-end gap-3">
-        <div>
-          <label class="block text-sm text-gray-700 mb-1">Range</label>
-          {% set rg = period or 'monthly' %}
-          <select name="range" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2">
-            <option value="monthly" {{ 'selected' if rg=='monthly' else '' }}>Monthly</option>
-            <option value="yearly" {{ 'selected' if rg=='yearly' else '' }}>Yearly</option>
-            <option value="all" {{ 'selected' if rg=='all' else '' }}>All</option>
-          </select>
-        </div>
 
-        <div>
-          <label class="block text-sm text-gray-700 mb-1">Year</label>
-          <select name="year" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2" {{ 'disabled' if rg=='all' }}>
-            {% for y in years %}
-              <option value="{{ y }}" {{ 'selected' if (year|int)==y else '' }}>{{ y }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      <div class="flex items-end gap-3">
+        <!-- ปุ่ม Download PDF -->
+        <a
+          href="{{ url_for('admin.dashboard_pdf', range=period, year=year, month=month) }}"
+          class="inline-flex items-center rounded-lg px-4 h-10 font-medium bg-gray-800 text-white hover:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-800 text-sm"
+        >
+          Download PDF
+        </a>
 
-        <div>
-          <label class="block text-sm text-gray-700 mb-1">Month</label>
-          <select name="month" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2" {{ 'disabled' if rg!='monthly' }}>
-            {% for m in months %}
-              <option value="{{ m }}" {{ 'selected' if (month|int)==m else '' }}>{{ months_th[m-1] }}</option>
-            {% endfor %}
-          </select>
-        </div>
+        <!-- ฟอร์ม Filter เดิม -->
+        <form method="get" class="flex flex-wrap items-end gap-3">
+          <div>
+            <label class="block text-sm text-gray-700 mb-1">Range</label>
+            {% set rg = period or 'monthly' %}
+            <select name="range" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2">
+              <option value="monthly" {{ 'selected' if rg=='monthly' else '' }}>Monthly</option>
+              <option value="yearly" {{ 'selected' if rg=='yearly' else '' }}>Yearly</option>
+              <option value="all" {{ 'selected' if rg=='all' else '' }}>All</option>
+            </select>
+          </div>
 
-        <button class="h-10 inline-flex items-center rounded-lg px-4 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600">
-          Filter
-        </button>
-      </form>
+          <div>
+            <label class="block text-sm text-gray-700 mb-1">Year</label>
+            <select name="year" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2" {{ 'disabled' if rg=='all' }}>
+              {% for y in years %}
+                <option value="{{ y }}" {{ 'selected' if (year|int)==y else '' }}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm text-gray-700 mb-1">Month</label>
+            <select name="month" class="h-10 rounded-lg border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600 px-2" {{ 'disabled' if rg!='monthly' }}>
+              {% for m in months %}
+                <option value="{{ m }}" {{ 'selected' if (month|int)==m else '' }}>{{ months_th[m-1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <button class="h-10 inline-flex items-center rounded-lg px-4 font-medium bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600">
+            Filter
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Summary revenue cards -->
@@ -79,11 +91,11 @@
     <!-- Chart -->
     <div>
       <canvas
-  id="revenueChart"
-  height="110"
-  data-labels='{{ chart_labels|tojson }}'
-  data-values='{{ chart_values|tojson }}'
-></canvas>
+        id="revenueChart"
+        height="110"
+        data-labels='{{ chart_labels|tojson }}'
+        data-values='{{ chart_values|tojson }}'
+      ></canvas>
     </div>
   </div>
 

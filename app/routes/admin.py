@@ -12,8 +12,6 @@ from app.db import SessionLocal
 from app.models import User, Package, Promotion, Payment, UserPackage
 import os
 
-
-
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
@@ -46,6 +44,7 @@ def _parse_date_val(v):
             pass
     return None
 
+
 def _auto_expire_promotions(db):
     """If today > end_date and status is still active, set to inactive automatically."""
     today = date.today()
@@ -60,6 +59,8 @@ def _auto_expire_promotions(db):
             changed += 1
     if changed:
         db.commit()
+
+
 # ------------------ Dashboard ------------------
 @bp.get("/dashboard")
 @_admin_required
@@ -229,6 +230,176 @@ def dashboard():
         db.close()
 
 
+@bp.get("/dashboard/pdf")
+@_admin_required
+def dashboard_pdf():
+    """Generate a PDF summary of revenue for the selected period."""
+    # ✅ import reportlab ตอนเรียกใช้ ไม่ import ตอนโหลดโมดูล
+    from io import BytesIO
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+
+    db = SessionLocal()
+    try:
+        today = date.today()
+        rg = (request.args.get("range") or "monthly").lower()  # monthly | yearly | all
+        year = int(request.args.get("year") or today.year)
+        month = int(request.args.get("month") or today.month)
+
+        months_th = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+        # ---------- base revenue summaries ----------
+        rev_all_time = db.execute(
+            select(func.coalesce(func.sum(Payment.total), 0))
+            .where(Payment.status == "approved")
+        ).scalar() or 0.0
+
+        rev_this_year = db.execute(
+            select(func.coalesce(func.sum(Payment.total), 0))
+            .where(
+                Payment.status == "approved",
+                extract("year", Payment.created_at) == today.year,
+            )
+        ).scalar() or 0.0
+
+        chart_labels: list[str] = []
+        chart_values: list[float] = []
+        rev_period_total = 0.0
+
+        if rg == "monthly":
+            last_day = monthrange(year, month)[1]
+            rows = db.execute(
+                select(
+                    extract("day", Payment.created_at),
+                    func.coalesce(func.sum(Payment.total), 0),
+                )
+                .where(
+                    Payment.status == "approved",
+                    extract("year", Payment.created_at) == year,
+                    extract("month", Payment.created_at) == month,
+                )
+                .group_by(extract("day", Payment.created_at))
+                .order_by(extract("day", Payment.created_at))
+            ).all()
+            sums_by_day = {int(d): float(s) for d, s in rows}
+
+            chart_labels = [f"{d} {months_th[month-1]}" for d in range(1, last_day + 1)]
+            chart_values = [sums_by_day.get(d, 0.0) for d in range(1, last_day + 1)]
+            rev_period_total = sum(chart_values)
+
+        elif rg == "yearly":
+            rows = db.execute(
+                select(
+                    extract("month", Payment.created_at),
+                    func.coalesce(func.sum(Payment.total), 0),
+                )
+                .where(
+                    Payment.status == "approved",
+                    extract("year", Payment.created_at) == year,
+                )
+                .group_by(extract("month", Payment.created_at))
+                .order_by(extract("month", Payment.created_at))
+            ).all()
+            sums_by_month = {int(m): float(s) for m, s in rows}
+
+            chart_labels = [f"{months_th[m-1]} {year}" for m in range(1, 13)]
+            chart_values = [sums_by_month.get(m, 0.0) for m in range(1, 13)]
+            rev_period_total = sum(chart_values)
+
+        else:  # rg == "all"
+            rows = db.execute(
+                select(
+                    extract("year", Payment.created_at),
+                    func.coalesce(func.sum(Payment.total), 0),
+                )
+                .where(Payment.status == "approved")
+                .group_by(extract("year", Payment.created_at))
+                .order_by(extract("year", Payment.created_at))
+            ).all()
+            years_found = sorted({int(y) for y, _ in rows}) or [today.year]
+            sums_by_year = {int(y): float(s) for y, s in rows}
+
+            chart_labels = [str(y) for y in years_found]
+            chart_values = [sums_by_year.get(y, 0.0) for y, s in rows]
+            rev_period_total = sum(chart_values)
+
+        # ---------- Build PDF ----------
+        buf = BytesIO()
+        c = canvas.Canvas(buf, pagesize=A4)
+        width, height = A4
+        y = height - 25 * mm
+
+        # Title
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(20 * mm, y, "Revenue Summary")
+        y -= 10 * mm
+
+        # Meta info
+        c.setFont("Helvetica", 10)
+        if rg == "monthly":
+            period_text = f"Range: Monthly   Year: {year}   Month: {months_th[month-1]}"
+        elif rg == "yearly":
+            period_text = f"Range: Yearly   Year: {year}"
+        else:
+            period_text = "Range: All years"
+        c.drawString(20 * mm, y, period_text)
+        y -= 6 * mm
+
+        c.drawString(20 * mm, y, f"Generated at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        y -= 10 * mm
+
+        # Summary numbers
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(20 * mm, y, "Summary")
+        y -= 7 * mm
+        c.setFont("Helvetica", 10)
+        c.drawString(25 * mm, y, f"Selected period total: {rev_period_total:,.2f} THB")
+        y -= 6 * mm
+        c.drawString(25 * mm, y, f"This year total:        {rev_this_year:,.2f} THB")
+        y -= 6 * mm
+        c.drawString(25 * mm, y, f"All time total:         {rev_all_time:,.2f} THB")
+        y -= 10 * mm
+
+        # Breakdown table
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(20 * mm, y, "Breakdown")
+        y -= 7 * mm
+        c.setFont("Helvetica", 9)
+
+        for label, value in zip(chart_labels, chart_values):
+            if y < 20 * mm:
+                c.showPage()
+                y = height - 25 * mm
+                c.setFont("Helvetica-Bold", 11)
+                c.drawString(20 * mm, y, "Breakdown (cont.)")
+                y -= 7 * mm
+                c.setFont("Helvetica", 9)
+
+            c.drawString(22 * mm, y, f"- {label}: {value:,.2f} THB")
+            y -= 5 * mm
+
+        c.showPage()
+        c.save()
+        buf.seek(0)
+
+        if rg == "monthly":
+            filename = f"revenue_{year}_{month:02d}.pdf"
+        elif rg == "yearly":
+            filename = f"revenue_{year}.pdf"
+        else:
+            filename = "revenue_all_years.pdf"
+
+        return send_file(
+            buf,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=filename,
+        )
+    finally:
+        db.close()
+
+
 # ------------------ Payments ------------------
 @bp.get("/payments")
 @_admin_required
@@ -358,7 +529,7 @@ def payment_reject(pid: int):
         db.add(p)
         db.commit()
         flash("Rejected successfully.", "success")
-        return redirect(url_for("admin.payment_detail", pid=p.id))
+        return redirect(url_for("admin.payment_detail", pid=pid))
     finally:
         db.close()
 
