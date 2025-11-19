@@ -3,7 +3,7 @@
 Scrape Carsome แล้ว upsert เข้า car_cache
 
 ตัวอย่าง:
-  python scripts\scrape_carsome.py --q "City" --min 0 --max 999999999 --limit 40 --chromedriver "C:\ScrapingCar\chromedriver.exe" --headless --debug-fuel
+  python scripts\scrape_carsome.py --q "City" --min 0 --max 999999999 --limit 40 --chromedriver "C:\File\CARCOM\backend\chromedriver.exe" --headless --debug-fuel
 """
 
 import os, sys, re, time, argparse
@@ -27,6 +27,78 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 BASE_URL = "https://www.carsome.co.th/buy-car"
+
+# ================== mapping สี / น้ำมัน / เกียร์ ==================
+COLOR_MAP_TH_EN = {
+    "ดำ": "Black",
+    "ขาว": "White",
+    "เทา": "Gray",
+    "เงิน": "Silver",
+    "แดง": "Red",
+    "น้ำเงิน": "Blue",
+    "ฟ้า": "Light Blue",
+    "น้ำตาล": "Brown",
+    "ทอง": "Gold",
+    "เขียว": "Green",
+    "ส้ม": "Orange",
+    "เหลือง": "Yellow",
+    "ม่วง": "Purple",
+    "บรอนซ์": "Bronze",
+    "ชมพู": "Pink",
+    "อื่น": "Other",
+}
+
+FUEL_MAP_TH_EN = {
+    "ดีเซล": "Diesel",
+    "เบนซิน": "Petrol",   # หรือ "Gasoline"
+}
+
+TRANSMISSION_MAP_TH_EN = {
+    "เกียร์ธรรมดา": "Manual",
+    "ธรรมดา": "Manual",
+    "mt": "Manual",
+    "เอ็มที": "Manual",
+    "เกียร์อัตโนมัติ": "Automatic",
+    "อัตโนมัติ": "Automatic",
+    "auto": "Automatic",
+    "at": "Automatic",
+    "เอที": "Automatic",
+}
+
+
+def normalize_color_th_to_en(s: str) -> str:
+    """รับข้อความสีภาษาไทยแล้วคืนชื่อสีภาษาอังกฤษ ถ้า map ไม่ได้คืน "" """
+    if not s:
+        return ""
+    t = re.sub(r"\s+", "", s)
+    for th, en in COLOR_MAP_TH_EN.items():
+        if th in t:
+            return en
+    return ""
+
+
+def normalize_fuel_th_to_en(s: str) -> str:
+    """รับข้อความเชื้อเพลิงภาษาไทยแล้วคืนชื่ออังกฤษ (Diesel / Petrol)"""
+    if not s:
+        return ""
+    t = s.replace(" ", "")
+    for th, en in FUEL_MAP_TH_EN.items():
+        if th in t:
+            return en
+    return ""
+
+
+def normalize_transmission_th_to_en(s: str) -> str:
+    """รับข้อความเกียร์ไทยแล้วคืน Manual / Automatic ถ้า map ไม่ได้คืน "" """
+    if not s:
+        return ""
+    t = s.lower().replace(" ", "")
+    for th, en in TRANSMISSION_MAP_TH_EN.items():
+        key = th.lower().replace(" ", "")
+        if key in t:
+            return en
+    return ""
+
 
 # ----------------- utils -----------------
 def load_env():
@@ -144,7 +216,7 @@ def parse_detail(driver, url: str) -> Dict:
         el = soup.select_one(selector)
         return (el.get_text(strip=True) if el else default) or default
 
-    # ===== helper: specs + fuel =====
+    # ===== helper: specs / fuel / color =====
     def collect_spec_items() -> Dict[str, str]:
         specs: Dict[str, str] = {}
         for row in soup.select(".car-details-content .detail-item, .detail__car-spec .detail-item"):
@@ -176,6 +248,15 @@ def parse_detail(driver, url: str) -> Dict:
             return m.group(2).strip(), m.group(1), "regex"
         return "", "", "not-found"
 
+    def extract_color(specs: Dict[str, str]) -> Tuple[str, str]:
+        color_th = ""
+        for k, v in specs.items():
+            if any(word in k for word in ["สีรถ", "สีภายนอก", "สีตัวถัง", "สี"]):
+                color_th = v.strip()
+                break
+        color_en = normalize_color_th_to_en(color_th)
+        return color_th, color_en
+
     # ===== fields =====
     title = (
         sel_text(".vehicle__title-wrapper span")
@@ -194,12 +275,19 @@ def parse_detail(driver, url: str) -> Dict:
     mileage_km = to_int(mil.group(1)) if mil else None
 
     gear_m = re.search(r"\|\s*([A-Za-zก-ฮ]+)", mileage_trans)
-    transmission = (gear_m.group(1).strip() if gear_m else "") or sel_text(".transmission") or ""
+    transmission_raw = (gear_m.group(1).strip() if gear_m else "") or sel_text(".transmission") or ""
+
+    # แปลงเกียร์เป็นอังกฤษ (Manual / Automatic) ถ้าได้
+    transmission_en = normalize_transmission_th_to_en(transmission_raw)
+    transmission_display = transmission_en or transmission_raw
 
     location = sel_text(".car-all__location-descs") or sel_text(".detail__location") or ""
 
     specs = collect_spec_items()
-    fuel_type, fuel_key, fuel_method = extract_fuel(specs)
+    fuel_type_th, fuel_key, fuel_method = extract_fuel(specs)
+    color_th, color_en = extract_color(specs)
+
+    fuel_en = normalize_fuel_th_to_en(fuel_type_th)
 
     reg_txt = ""
     for row in soup.select(".car-details-content .detail-item, .detail__car-spec .detail-item"):
@@ -224,24 +312,64 @@ def parse_detail(driver, url: str) -> Dict:
         brand = m.group(1)
         model = m.group(2)
 
-    attrs = {
+    attrs: Dict[str, object] = {
         "ผู้ขาย": "CARSOME",
         "ชื่อรุ่น": title,
         "ราคา(บาท)": price_clean or price_txt or "",
         "เลขไมล์(กม.)": f"{mileage_km:,}" if mileage_km else "",
-        "เกียร์": transmission,
+        "เกียร์": transmission_display,   # ใช้อัน display ที่เป็นอังกฤษถ้า map ได้
         "ที่ตั้งรถ": location,
         "สเปกย่อย": specs,
     }
-    if fuel_type:
-        # *** สำคัญ: ใส่ทั้งสองคีย์ให้เทมเพลตอ่านเจอแน่นอน ***
-        attrs["ประเภทเชื้อเพลิง"] = fuel_type
-        attrs["เชื้อเพลิง"] = fuel_type
-        attrs["fuel_type_normalized"] = fuel_type.lower()
-        if isinstance(attrs.get("สเปกย่อย"), dict):
-            attrs["สเปกย่อย"].setdefault("เชื้อเพลิง", fuel_type)
 
-    debug_fuel = {"value": fuel_type, "key": fuel_key, "method": fuel_method}
+    # ----- fuel (เขียนทับ key เดิมให้เป็นอังกฤษถ้า map ได้) -----
+    display_fuel = fuel_en or fuel_type_th
+    if display_fuel:
+        attrs["ประเภทเชื้อเพลิง"] = display_fuel
+        attrs["เชื้อเพลิง"] = display_fuel
+
+    if fuel_type_th:
+        attrs["fuel_type_th"] = fuel_type_th
+    if fuel_en:
+        attrs["fuel_type_en"] = fuel_en
+        attrs["fuel_type_normalized"] = fuel_en.lower()
+    else:
+        attrs["fuel_type_normalized"] = (fuel_type_th or "").lower()
+
+    if isinstance(attrs.get("สเปกย่อย"), dict):
+        attrs["สเปกย่อย"].setdefault("เชื้อเพลิง", fuel_type_th or display_fuel or "")
+        if fuel_en:
+            attrs["สเปกย่อย"]["fuel_type_en"] = fuel_en
+
+    # ----- color (ทับ key "สี" ให้เป็นอังกฤษ ถ้า map ได้) -----
+    display_color = color_en or color_th
+    if display_color:
+        attrs["สี"] = display_color
+
+    if color_th:
+        attrs["color_th"] = color_th
+    if color_en:
+        attrs["color_en"] = color_en
+        attrs["color_normalized"] = color_en.lower()
+        if isinstance(attrs.get("สเปกย่อย"), dict):
+            attrs["สเปกย่อย"].setdefault("สี", color_th or display_color)
+            attrs["สเปกย่อย"]["color_en"] = color_en
+
+    # ----- transmission meta -----
+    if transmission_raw:
+        attrs["transmission_th"] = transmission_raw
+    if transmission_en:
+        attrs["transmission_en"] = transmission_en
+        attrs["transmission_normalized"] = transmission_en.lower()
+    else:
+        attrs["transmission_normalized"] = (transmission_raw or "").lower()
+
+    debug_fuel = {
+        "value": fuel_type_th,
+        "key": fuel_key,
+        "method": fuel_method,
+        "fuel_en": fuel_en,
+    }
 
     return {
         "source": "carsome",
@@ -400,7 +528,13 @@ def main():
 
                     if args.debug_fuel:
                         dbg = data.get("debug_fuel", {}) or {}
-                        print(f"[FUEL] #{i} -> {dbg.get('value') or 'N/A'} | key={dbg.get('key') or '-'} | method={dbg.get('method') or '-'} | url={link}")
+                        print(
+                            f"[FUEL] #{i} -> {dbg.get('value') or 'N/A'} "
+                            f"| fuel_en={dbg.get('fuel_en') or 'N/A'} "
+                            f"| key={dbg.get('key') or '-'} "
+                            f"| method={dbg.get('method') or '-'} "
+                            f"| url={link}"
+                        )
 
                     if upsert_car(db, data):
                         created += 1
