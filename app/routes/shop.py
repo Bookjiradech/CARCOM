@@ -692,12 +692,19 @@ def buy_package(pkg_id: int):
 
         # compute 'effective' price for billing
         base = float(pkg.price_thb or 0)
-        eff = _effective_price(pkg)
+        eff = _effective_price(pkg)  # 👉 ราคาแพ็กเกจที่ผู้ใช้เห็น (รวม VAT แล้ว)
         promo_id_to_set = pkg.promotion_id if eff < base else None
 
-        amount = float(eff)
-        vat = round(amount * 0.07, 2)
-        total = round(amount + vat, 2)
+        # 👉 ตีความ eff ว่า "ราคาพร้อม VAT 7%" แล้ว
+        total = round(float(eff), 2)        # เช่น 35.00
+        amount_net = round(total / 1.07, 2) # ราคาก่อน VAT (3x.xx)
+        vat = round(total - amount_net, 2)  # ส่วนของ VAT 7%
+
+        # กันกรณีปัดเศษแล้วไม่เป๊ะ
+        if round(amount_net + vat, 2) != total:
+            vat = round(total - amount_net, 2)
+
+        amount = amount_net
 
         # ✅ set initial status to draft (user will upload slip before sending to admin)
         pay = Payment(
